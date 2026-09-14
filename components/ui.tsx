@@ -66,18 +66,19 @@ export function Title({ children, className = "" }: { children: ReactNode; class
 }
 
 /** Bottom tab bar — Today · History · Settings. Never shown on live / countdown / recording / rest. */
-export function TabBar({ active }: { active: "today" | "history" | "settings" }) {
+export function TabBar({ active }: { active: "today" | "week" | "history" | "settings" }) {
   const item = (href: string, label: string, key: typeof active) => (
     <Link
       href={href}
-      className={`flex-1 text-center py-3 text-[12px] tracking-[0.12em] uppercase ${active === key ? "text-text" : "text-text-faint"}`}
+      className={`flex-1 text-center py-3 text-[11px] tracking-[0.1em] uppercase ${active === key ? "text-text" : "text-text-faint"}`}
     >
       {label}
     </Link>
   );
   return (
-    <nav className="border-t hairline flex px-4 safe-bottom bg-bg">
+    <nav className="border-t hairline flex px-2 safe-bottom bg-bg">
       {item("/today", "Today", "today")}
+      {item("/week", "Week", "week")}
       {item("/history", "History", "history")}
       {item("/settings", "Settings", "settings")}
     </nav>

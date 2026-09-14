@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Digits, Pill, Select } from "@/components/ui";
@@ -67,7 +68,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
   const [cameraFailed, setCameraFailed] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [uploads, setUploads] = useState({ pending: 0, failed: 0 });
   const [busy, setBusy] = useState(false);
   const [mirror, setMirror] = useState(true);
@@ -333,7 +334,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
       lifts: bundle.lifts.map((x) => (x.id === lift.id ? { ...x, status: "missed", sets: x.sets.map((y) => (y.result === "pending" ? { ...y, result: "missed" } : y)) } : x)),
     };
     setBundle(nextBundle);
-    setLeaveOpen(false);
+    setMenuOpen(false);
     setBusy(false);
     if (!nextBundle.lifts.find(isOpen)) await finishDay();
     else setPhase({ kind: "live" });
@@ -407,7 +408,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
       {phase.kind === "live" && lift && set && (
         <main className="absolute inset-0 flex flex-col px-6 safe-top safe-bottom">
           <div className="flex items-center justify-between">
-            <button type="button" aria-label="Leave this lift" className="faint py-2 pr-4 -ml-1" onClick={() => setLeaveOpen((v) => !v)}>
+            <button type="button" aria-label="Menu" className="faint py-2 pr-4 -ml-1 text-[18px] leading-none" onClick={() => setMenuOpen((v) => !v)}>
               ‹
             </button>
             <div className="title text-[13px]">
@@ -416,15 +417,24 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
             <span className="w-6" />
           </div>
 
-          {leaveOpen && (
-            <div className="mt-4 border-b hairline pb-4">
-              <p className="caption">Leave {lift.display_name.toLowerCase()}? It counts as a miss.</p>
-              <div className="flex gap-6 mt-2">
+          {menuOpen && (
+            <div className="mt-4 border-b hairline pb-5">
+              <p className="faint mb-4">Your logged sets are saved. Come back today and the workout picks up right here.</p>
+              <div className="flex flex-col items-start gap-3">
+                <Link href="/week" className="link">
+                  The week
+                </Link>
+                <Link href="/history" className="link">
+                  History
+                </Link>
+                <Link href="/settings" className="link">
+                  Settings
+                </Link>
                 <button type="button" className="link" onClick={leaveLift} disabled={busy}>
-                  Leave
+                  Skip {lift.display_name} · counts as a miss
                 </button>
-                <button type="button" className="link" onClick={() => setLeaveOpen(false)}>
-                  Stay
+                <button type="button" className="link text-text" onClick={() => setMenuOpen(false)}>
+                  Back to the set
                 </button>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Screen, TabBar, Title, Wordmark } from "@/components/ui";
+import { ResumeBar } from "@/components/resume-bar";
 import { DEFAULT_TZ, daysBetween, isValidTz, localDay } from "@/lib/session/dates";
 import { getProfile } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
@@ -24,6 +25,7 @@ export default async function SettingsPage() {
     <>
       <Screen>
         <Wordmark />
+        <ResumeBar />
         <Title className="mt-10 mb-6">Settings</Title>
         <SettingsForm
           email={profile.email}

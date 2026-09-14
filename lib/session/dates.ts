@@ -51,3 +51,23 @@ export function isYmd(s: unknown): s is string {
 export function daysBetween(fromYmd: string, toYmd: string): number {
   return Math.round((ymdToDate(toYmd).getTime() - ymdToDate(fromYmd).getTime()) / 86400000);
 }
+
+export function toYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * The Mon–Fri dates of the training week to show: the current week on a
+ * weekday, the coming week on Saturday/Sunday (what's ahead is more useful
+ * than what just finished).
+ */
+export function weekDates(day: LocalDay): { dayIndex: number; ymd: string; date: Date }[] {
+  const offsetToMonday = day.weekday === 0 ? 1 : day.weekday === 6 ? 2 : 1 - day.weekday;
+  const monday = new Date(day.date);
+  monday.setDate(monday.getDate() + offsetToMonday);
+  return [1, 2, 3, 4, 5].map((i) => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + (i - 1));
+    return { dayIndex: i, ymd: toYmd(d), date: d };
+  });
+}

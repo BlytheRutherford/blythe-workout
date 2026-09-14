@@ -120,6 +120,9 @@ export default async function TodayPage() {
           ))}
         </ul>
         <WalkNote sessionId={session?.session.id ?? null} done={session?.session.walk_done ?? false} />
+        <Link href="/week" className="faint self-start underline underline-offset-4 decoration-[#2A2A28]">
+          See the whole week
+        </Link>
         <div className="flex-1" />
         {session ? (
           <PillLink href={`/workout/${session.session.id}`}>Continue workout</PillLink>

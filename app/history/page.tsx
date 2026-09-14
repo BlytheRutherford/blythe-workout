@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Screen, TabBar, Title, Wordmark } from "@/components/ui";
+import { ResumeBar } from "@/components/resume-bar";
 import { DEFAULT_TZ, isValidTz, localDay } from "@/lib/session/dates";
 import { completedDates } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
@@ -46,6 +47,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
     <>
       <Screen>
         <Wordmark />
+        <ResumeBar />
         <div className="mt-10 mb-6 flex items-baseline justify-between">
           <Title>
             {MONTHS[month - 1]} {year}
