@@ -1,7 +1,6 @@
 import "server-only";
-import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { ZipArchive } from "archiver";
 import { emailName, EXERCISES, formatPrescription, variantFor } from "@/lib/engine";
@@ -9,16 +8,18 @@ import { ymdToDate } from "@/lib/session/dates";
 import type { ClipRow, LiftRow, SetRow } from "@/lib/session/types";
 import { createAdminClient } from "@/lib/supabase/server";
 import { adminEmail, siteUrl } from "@/lib/supabase/env";
+import { copyConcat, extOf, ffmpegPath, keepSeconds, probeClip, type Probe, trimConcat } from "./ffmpeg";
 
 /**
  * Per-exercise pipeline. Runs inside `after()` once a lift is complete and every
  * set that recorded a clip has uploaded it:
  *   1. download the lift's set clips
- *   2. concat with ffmpeg (stream copy — same device, same codec) into ONE file
+ *   2. trim TRIM_TAIL_SEC off each clip's tail and concat into ONE mp4
  *   3. upload sessions/{user}/{date}/{exercise}.{ext}, 7-day signed link
  *   4. Edge Function → Resend: "Day N: Dumbbell incline press"
- * Fallbacks: concat fails → zip clips + description; zip can't be stored →
- * per-clip signed links. Email failure never fails the workout.
+ * Fallbacks: the trim pass fails → untrimmed stream-copy concat; that fails →
+ * zip clips + description; zip can't be stored → per-clip signed links. Email
+ * failure never fails the workout.
  */
 
 const SIGNED_URL_SECONDS = 7 * 24 * 3600;
@@ -29,41 +30,6 @@ interface Outcome {
   path: string | null;
   bytes: number | null;
   links: { label: string; url: string }[];
-}
-
-async function ffmpegPath(): Promise<string> {
-  const mod = (await import("ffmpeg-static")) as unknown as { default?: string } | string;
-  const p = typeof mod === "string" ? mod : (mod.default ?? "");
-  if (!p) throw new Error("ffmpeg binary not found");
-  try {
-    await chmod(p, 0o755);
-  } catch {}
-  return p;
-}
-
-function run(cmd: string, args: string[], timeoutMs: number): Promise<{ code: number; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
-    let stderr = "";
-    child.stderr.on("data", (d) => (stderr += String(d).slice(-4000)));
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(new Error("ffmpeg timed out"));
-    }, timeoutMs);
-    child.on("error", (e) => {
-      clearTimeout(timer);
-      reject(e);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ code: code ?? -1, stderr });
-    });
-  });
-}
-
-function extOf(p: string) {
-  const m = /\.([a-z0-9]+)$/i.exec(p);
-  return m ? m[1].toLowerCase() : "mp4";
 }
 
 /**
@@ -146,18 +112,29 @@ export async function stitchLiftAndEmail(liftId: string): Promise<void> {
       }
       const prefix = `${session.user_id}/${session.session_date}`;
 
-      // --- 1. one video for the exercise
+      // --- 1. one video for the exercise, each set's tail trimmed
       try {
-        const ext = extOf(local[0].file);
-        if (!local.every((l) => extOf(l.file) === ext)) throw new Error("mixed containers");
-        const listFile = `${workDir}/list.txt`;
-        await writeFile(listFile, local.map((l) => `file '${l.file.replace(/'/g, "'\\''")}'`).join("\n"));
-        const out = `${workDir}/lift.${ext}`;
-        const args = ["-y", "-hide_banner", "-loglevel", "error", "-fflags", "+genpts", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy"];
-        if (ext === "mp4") args.push("-movflags", "+faststart");
-        args.push(out);
-        const res = await run(await ffmpegPath(), args, 120_000);
-        if (res.code !== 0) throw new Error(`ffmpeg exit ${res.code}: ${res.stderr.slice(-500)}`);
+        const ff = await ffmpegPath();
+        const parts: { file: string; keepSec: number; probe: Probe }[] = [];
+        for (const l of local) {
+          const probe = await probeClip(ff, l.file, Number(l.clip.duration_ms) || 0);
+          parts.push({ file: l.file, keepSec: keepSeconds(probe.durationSec), probe });
+        }
+
+        let out = `${workDir}/lift.mp4`;
+        let ext = "mp4";
+        let trimmed = true;
+        try {
+          if (parts.some((p) => p.keepSec <= 0)) throw new Error("unknown clip durations");
+          await trimConcat(ff, parts, out);
+        } catch (trimErr) {
+          console.warn("trim pass failed, joining untrimmed:", (trimErr as Error).message);
+          trimmed = false;
+          ext = extOf(local[0].file);
+          out = `${workDir}/lift-copy.${ext}`;
+          await copyConcat(ff, local.map((l) => l.file), workDir, ext, out);
+        }
+
         const size = (await stat(out)).size;
         if (size < 1024) throw new Error("empty output");
         const storagePath = `${prefix}/${lift.exercise_key}.${ext}`;
@@ -168,6 +145,21 @@ export async function stitchLiftAndEmail(liftId: string): Promise<void> {
         if (upErr) throw new Error(`upload: ${upErr.message}`);
         const { data: signed } = await admin.storage.from("sessions").createSignedUrl(storagePath, SIGNED_URL_SECONDS, { download: `${subject}.${ext}` });
         outcome = { kind: "lift", path: storagePath, bytes: size, links: signed?.signedUrl ? [{ label: `${longName} · ${local.length} sets`, url: signed.signedUrl }] : [] };
+
+        // Record what actually happened to each clip before the originals go.
+        if (trimmed) {
+          await Promise.all(
+            local.map((l, i) =>
+              admin
+                .from("clips")
+                .update({
+                  duration_ms: Math.round(parts[i].keepSec * 1000),
+                  trimmed_ms: Math.round((parts[i].probe.durationSec - parts[i].keepSec) * 1000),
+                })
+                .eq("id", l.clip.id),
+            ),
+          );
+        }
         await admin.storage.from("sessions").remove(clipRows.map((c) => c.storage_path));
       } catch (e) {
         console.warn("lift concat failed, falling back to zip:", (e as Error).message);

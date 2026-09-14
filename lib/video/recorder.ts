@@ -3,10 +3,13 @@
 import { AUDIO_BITRATE, pickMimeType, VIDEO_BITRATE } from "./camera";
 
 /**
- * Wraps MediaRecorder with 1 s timeslices so the tail can be dropped without
- * re-encoding. Safari writes fragmented MP4 (init segment first, then
- * independent moof/mdat fragments per timeslice) and Chrome writes WebM
- * clusters; in both cases dropping trailing chunks leaves a playable file.
+ * Wraps MediaRecorder and returns the WHOLE recording.
+ *
+ * Trimming the walk-back off the tail happens on the server, where ffmpeg
+ * knows each clip's exact duration. It used to be done here by dropping
+ * trailing timeslice chunks, which quietly under-trimmed: iOS Safari does not
+ * honour the 1 s timeslice (a 9.6 s recording arrived as 3 chunks, so
+ * "drop 3 chunks" clamped to dropping one ≈ 1 s).
  *
  * Optional canvas compositing burns the overlay (weight × reps) into the file.
  * If the composite path fails for any reason we fall back to the raw stream
@@ -16,11 +19,11 @@ import { AUDIO_BITRATE, pickMimeType, VIDEO_BITRATE } from "./camera";
 export interface RecordingResult {
   blob: Blob;
   mime: string;
-  /** Length of the returned file, ms (after trimming). */
+  /** Length of the returned file, ms. */
   durationMs: number;
-  /** How much was dropped from the tail, ms. */
+  /** Always 0 — the server trims the tail. */
   trimmedMs: number;
-  /** Raw length before trimming, ms. */
+  /** Wall-clock length of the recording, ms. */
   rawDurationMs: number;
 }
 
@@ -29,18 +32,12 @@ export interface OverlayText {
   line2: string; // 40 × 9
 }
 
-export const TRIM_TAIL_MS = 3000;
+/** Chunked delivery keeps a long recording out of one giant buffer. */
 const TIMESLICE_MS = 1000;
-
-interface Chunk {
-  blob: Blob;
-  /** ms since recording start when this chunk arrived */
-  at: number;
-}
 
 export class Recorder {
   private recorder: MediaRecorder | null = null;
-  private chunks: Chunk[] = [];
+  private chunks: Blob[] = [];
   private startedAt = 0;
   private mime = "";
   private raf = 0;
@@ -93,14 +90,14 @@ export class Recorder {
     this.recorder = rec;
     this.mime = rec.mimeType || mime || "video/mp4";
     rec.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) this.chunks.push({ blob: e.data, at: performance.now() - this.startedAt });
+      if (e.data && e.data.size > 0) this.chunks.push(e.data);
     };
     this.startedAt = performance.now();
     rec.start(TIMESLICE_MS);
   }
 
-  /** Stop and return the file with the last `trimMs` dropped (never to empty). */
-  stop(trimMs = TRIM_TAIL_MS): Promise<RecordingResult> {
+  /** Stop and return the whole recording. The tail trim happens server-side. */
+  stop(): Promise<RecordingResult> {
     const rec = this.recorder;
     if (!rec) return Promise.reject(new Error("Not recording."));
     return new Promise((resolve, reject) => {
@@ -113,23 +110,14 @@ export class Recorder {
         this.chunks = [];
         this.recorder = null;
         if (chunks.length === 0) return reject(new Error("No video data."));
-
-        // Drop whole trailing timeslices (≈1 s each) instead of trusting wall-clock
-        // timestamps, which iOS pauses when the page is backgrounded.
-        let kept = chunks;
-        let trimmed = 0;
-        // The first chunk can be a media-less init segment (ftyp+moov), so always
-        // keep at least two chunks; a clip ≤ 3 s is never trimmed to nothing.
-        if (rawDuration > trimMs + 1000 && chunks.length > 2) {
-          const drop = Math.min(chunks.length - 2, Math.round(trimMs / TIMESLICE_MS));
-          kept = chunks.slice(0, chunks.length - drop);
-          trimmed = Math.min(rawDuration - 1000, drop * TIMESLICE_MS);
-        }
-        const blob = new Blob(
-          kept.map((c) => c.blob),
-          { type: mime.split(";")[0] },
-        );
-        resolve({ blob, mime, durationMs: Math.max(0, Math.round(rawDuration - trimmed)), trimmedMs: Math.round(trimmed), rawDurationMs: Math.round(rawDuration) });
+        const blob = new Blob(chunks, { type: mime.split(";")[0] });
+        resolve({
+          blob,
+          mime,
+          durationMs: Math.round(rawDuration),
+          trimmedMs: 0,
+          rawDurationMs: Math.round(rawDuration),
+        });
       };
       rec.onstop = finish;
       rec.onerror = () => finish();
