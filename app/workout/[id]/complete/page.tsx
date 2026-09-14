@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Screen, Title, Wordmark } from "@/components/ui";
-import { DAYS, formatLoad } from "@/lib/engine";
+import { DAYS, formatPrescription, WORK_SETS } from "@/lib/engine";
 import { getProfile, getSessionById } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { LiftEmails } from "./lift-emails";
@@ -33,7 +33,7 @@ export default async function CompletePage({ params }: PageProps<"/workout/[id]/
         lifts={bundle.lifts.map((l) => ({
           id: l.id,
           name: l.display_name,
-          load: `${formatLoad(l.prescribed_weight)} × ${l.prescribed_reps}${l.exercise.rep_unit ?? ""} × 3`,
+          load: formatPrescription(l.prescribed_weight, l.prescribed_reps, l.exercise.rep_unit, WORK_SETS),
           status: l.status,
           emailStatus: l.email_status,
           emailError: l.email_error,

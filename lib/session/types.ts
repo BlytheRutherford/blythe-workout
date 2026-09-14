@@ -27,6 +27,7 @@ export interface StateRow {
   target_reps: number;
   consecutive_hits: number;
   consecutive_misses: number;
+  variant_index: number;
   note: string | null;
   last_hit_weight: number | null;
   last_hit_reps: number | null;
@@ -59,6 +60,7 @@ export interface LiftRow {
   exercise_id: number;
   exercise_key: string;
   display_name: string;
+  variant_index: number;
   order_index: number;
   prescribed_weight: number;
   prescribed_reps: number;

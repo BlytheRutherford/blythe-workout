@@ -1,6 +1,6 @@
 # Blythe Workout
 
-iPhone-first PWA at **https://blytheworkout.com**. Five dumbbell lifts a day, Monday–Friday, the same program for everyone; only starting weights differ. On the recording account every set is filmed (front camera, video-only so background music keeps playing); as soon as a lift's three sets are done they are stitched into one video and emailed as **"Day N: Dumbbell incline press"**.
+iPhone-first PWA at **https://blytheworkout.com**. Six dumbbell lifts a day, Monday–Friday, the same program for everyone; only starting weights differ. On the recording account every set is filmed (front camera, video-only so background music keeps playing); as soon as a lift's three sets are done they are stitched into one video and emailed as **"Day N: Dumbbell incline press"**.
 
 Stack: Next.js 16 (App Router, TypeScript, Tailwind v4), Supabase (auth + Postgres + Storage + Edge Function), Vercel (hosting, cron), Resend (mail). Butter Black design: `#0A0A0A` background, `#F3E5AB` for every title, hero number and pill. IBM Plex Sans for UI, Fraunces for giant numbers.
 
@@ -54,7 +54,7 @@ Deploy: `npx vercel deploy --prod` (project is linked in `.vercel/`). Vercel Cro
 1. **Today** lists the day's five lifts with weight × reps from the engine. Weekends show *Yoga day · Yoga With Adriene · No lift prescribed.* The 2-mile walk is outside the app (gray note only). The lifetime day number ("Day N") is fixed when the day starts.
 2. **Live lift**: `MON · 1/5`, lift name, optional *Form video* link, `THIS LOG` + giant `40 × 9`, gray *last log*, three set pips, *Change starting weight* (first 14 days only), and one pill: **RECORD** (accounts without `records_video` get **LOG SET** instead and never touch the camera). The first lift of the day has two warm-up sets first (≈50 % × 5, ≈75 % × 3) logged with *Warm-up done*; they never touch the engine.
 3. **RECORD** → front camera, video only (from the tap) → giant **3 · 2 · 1** (tap to cancel, nothing written) → recording starts at 0 with the overlay `MON · DAY 1 · INCLINE PRESS` / `40 × 9` and `● REC 0:12`. Only pill: **LOG SET**. The preview is mirrored; the file is not.
-4. **LOG SET** → stop → the last 3 s are dropped (whole 1-s fragments, never to empty) → clip queued for upload (IndexedDB-backed, retried) → the set is stored as a hit at the shown prescription → **rest** with a giant timer and auto-advance at 0:00 (between sets: the lift's rest; between lifts: 90 s; after warm-ups: 45 s). A faint *skip rest* link appears after 8 s; skipping is allowed, discouraged, and recorded on the set (`rest_skipped`, visible in the CSV and in the lift email).
+4. **LOG SET** → stop → the last 3 s are dropped (whole 1-s fragments, never to empty) → clip queued for upload (IndexedDB-backed, retried) → the set is stored as a hit at the shown prescription → **rest** with a giant timer and auto-advance at 0:00 (between sets: the lift's rest; between lifts: 90 s; after warm-ups: 45 s). A faint *skip rest* link sits under the timer; skipping is allowed, discouraged, and recorded on the set (`rest_skipped`, visible in the CSV and in the lift email).
 5. Leaving a lift early (the `‹` at the top, with an inline confirm) counts as a miss. Closing the app mid-lift and coming back another day also counts it as a miss; untouched lifts are left alone.
 6. **When a lift's third set is logged and its clips are uploaded**, the server stitches the three clips into one file with ffmpeg (stream copy, `+faststart`, `+genpts`), uploads `sessions/{user}/{date}/{exercise}.mp4`, and emails **"Day N: Dumbbell incline press"** with a 7-day signed link and the set list (file attached when under 20 MB). If concat fails: zip of clips + `youtube-description.txt`. If the zip can't be stored: per-clip links. A clip that never uploads is not waited for forever — closing the day (or the daily cron) emails whatever exists. Email failure never fails the workout; per-lift **Retry** is on the Day-complete screen.
 7. The **overlay is burned into the file** through a canvas composite when the browser allows it (Settings → *Burn weight × reps into video*); if the composite is refused the raw camera stream is recorded and the on-screen overlay stays.
@@ -64,6 +64,28 @@ Camera fallback: if `getUserMedia` fails, *Choose from Camera Roll* (native pick
 
 **Reset all exercises** (Settings) deletes every session, set, clip and video for the account, puts every lift back to its starting load, reopens the 14-day calibration and restarts at Day 1 — for testing the app before the real start.
 
+## The week
+
+Six lifts × 3 working sets = 18 working sets a day, ≈ 47–52 min including rests and dumbbell changes — inside the 45–60 min budget. Weekly fractional sets land in the 10–20 band ACSM 2026 calls productive for every trained muscle.
+
+| Day | Lifts |
+|---|---|
+| **Mon · chest + core** | incline DB press · flat DB press · DB pullover · lateral raise · hanging knee raise · half-kneeling anti-rotation press |
+| **Tue · back + arms** | pull-up · single-arm DB row · chest-supported DB row · rear-delt fly · incline DB curl · dead bug |
+| **Wed · legs + posterior** | goblet squat · RFE split squat · DB RDL · Nordic curl · DB hip thrust · single-leg calf raise |
+| **Thu · push + arms** | decline/flat DB press · seated DB overhead press · overhead DB extension · hammer curl · lateral raise · feet-elevated push-up |
+| **Fri · back + posterior** | pull-up · two-arm bent-over row · reverse lunge · DB RDL · hanging leg raise · seated single-leg calf raise |
+
+## Never running out of road at 52.5 lb
+
+The dumbbells stop at 52.5 lb per hand, so load progression on any given movement is finite. Every lift therefore has a **ladder** (`VARIANTS` in `lib/engine/program.ts`): an ordered list of progressively harder versions of the same movement, each restarting at a low load so double progression can run again for months.
+
+A lift only climbs a rung when it is genuinely finished — all three sets at 52.5 lb (or at the bodyweight rep cap) *and* at the top of the extended rep range. Then the engine swaps the movement, resets the load, clears the "last log" caption and shows the new cue. For example `goblet squat → heel-elevated goblet squat → front-racked squat (two dumbbells, double the load) → heel-elevated front-racked squat → sissy squat`, or `pull-up → weighted pull-up (dumbbell between the feet) → archer pull-up`.
+
+The ladders use only what the evidence supports for a fixed load ceiling: convert to **unilateral** (matches bilateral for hypertrophy, and one limb carries the whole load), add **range of motion** with a deficit, move to a harder **mechanical position** (steeper incline, overhead, rear-foot-elevated), add **lengthened partials**, or hand the movement to **bodyweight**, where the ceiling is effectively unlimited. Tempo and drop sets are deliberately *not* progression steps — the 2025 tempo meta-analysis found eccentric speed barely matters, and intensity techniques don't beat straight sets when volume is equated.
+
+**Exercises are not rotated on a calendar.** Randomly varying exercises showed no benefit over a fixed selection (Baz-Valle 2019) and excessive rotation actively hurts (Kassiano 2022); the cost is losing the progression log. Variety comes instead from breadth inside the week — two structurally distinct movements per muscle — plus earned graduation up the ladder.
+
 ## Progression engine (pure TypeScript)
 
 Legal Bowflex 552 loads only: 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 30, 35, 40, 45, 50, 52.5. 27.5 and 32.5 never appear; anything else snaps to the next legal load.
@@ -71,7 +93,7 @@ Legal Bowflex 552 loads only: 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 30, 35, 
 - Double progression per lift, 8–12 reps (calves 10–15 standing, 12–20 seated).
 - All three sets hit and reps below the ceiling → same weight, +1 rep. At the ceiling → next legal load, reps back to the floor.
 - Miss (lift started, left before three LOG SETs) → hold once. Second straight miss → one increment down, reps to the floor. A prescription is never issued a third time without graduating or deloading.
-- 52.5 at the ceiling → stay, add bonus reps (*Dumbbell max. Adding reps.*). Bodyweight lifts progress by reps only.
+- 52.5 at the ceiling → stay and add bonus reps (*Dumbbell max. Adding reps.*) up to `rangeMax + 8`; once those are beaten the lift graduates to the next rung of its ladder. Bodyweight lifts do the same.
 - **Adaptive ceiling (evidence-based addition):** the top of the range rises with the size of the next dumbbell jump — `clamp(floor + round(jump% / 2.5), max, max + 8)` — so a 25 → 30 lb step (+20 %) happens at 16 reps rather than 12 and lands at roughly equal difficulty (25 × 16 ≈ 30 × 8 by Epley). Small jumps (45 → 50, 50 → 52.5) keep the plain 8–12.
 - Starting loads = trained seed × multiplier (sedentary 0.45, lightly active 0.55, moderately active 0.70, returning lifter 0.85 × bodyweight/160 lb clamped ±20 %, trained 1.0), snapped **down** to a legal load, capped at 40 lb unless trained. Adjustable per lift for the first 14 days.
 
@@ -85,6 +107,8 @@ The spec was reviewed against current literature (Sept 2026) before coding. Ever
 | Two warm-up sets on lift #1 (50 % × 5, 75 % × 3) instead of one at 50 % | Schoenfeld's warm-up protocol; high-load/low-volume warm-ups improve session performance. |
 | Loaded Russian twist → **half-kneeling anti-rotation press** (Mon #5) | Loaded flexion + rotation is the documented disc-injury mechanism; train the flexion *moment*, not the motion (McGill; Marshall & McGill). |
 | Friday anti-rotation slot → **DB RDL** (shares progression with Wednesday) | Hamstrings/glutes were trained once a week; ACSM 2026 and Pelland 2025 support ≥2 sessions per muscle per week. |
+| Sixth lift added to every day: **lateral raise** (Mon), **incline DB curl** (Tue), **Nordic curl** (Wed), **feet-elevated push-up** (Thu), **reverse lunge** moved to Fri, **RFE split squat** added to Wed | 15 working sets/day ≈ 41 min, under the 45–60 min budget; quads (6 sets/wk), hamstrings, side delts and biceps were all below ACSM 2026's ≥10 sets/muscle/week. The RFE split squat also dodges the dumbbell ceiling — one leg carries ~2× the load of a goblet squat. |
+| **Nordic curl** added alongside the RDL | Maeo 2024 (MRI, n=42): hip-hinge and knee-flexion hamstring work grow different heads (+19 % vs +5 % on the long head for RDL-type; Nordics 1.9× better for the knee flexors). Neither substitutes for the other. |
 | Skull crusher → **seated two-hand overhead DB extension**, seed 25 lb | Overhead position grows all three triceps heads more (Maeo 2023); "40 lb" per hand was implausible next to a 35 lb flat press. |
 | Bench back extension → **DB hip thrust** (10–15) | A flat bench can't anchor the feet; hip thrust adds glute volume safely with the same bench. |
 | Friday calf raise → **seated single-leg calf raise** (12–20) | Soleus needs bent-knee work; keep Wednesday's straight-leg raise for gastrocnemius (Kassiano 2023 favours the long-length stretch). |

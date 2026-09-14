@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PillLink, Screen, TabBar, Title, Wordmark } from "@/components/ui";
 import { TzSync } from "@/components/tz-sync";
-import { DAYS, formatLoad } from "@/lib/engine";
+import { DAYS, formatPrescription, WORK_SETS } from "@/lib/engine";
 import { DEFAULT_TZ, isValidTz, localDay } from "@/lib/session/dates";
 import { previewToday } from "@/lib/session/preview";
 import { finalizeStaleSessions, getProfile, getSessionForDate } from "@/lib/session/service";
@@ -64,9 +64,8 @@ export default async function TodayPage() {
             {session.lifts.map((l) => (
               <li key={l.id} className="hairline-row">
                 <span className={l.status === "completed" ? "text-text" : "text-text-faint"}>{l.display_name}</span>
-                <span className="caption">
-                  {formatLoad(l.prescribed_weight)} × {l.prescribed_reps}
-                  {l.exercise.rep_unit ?? ""}
+                <span className="caption whitespace-nowrap">
+                  {formatPrescription(l.prescribed_weight, l.prescribed_reps, l.exercise.rep_unit, WORK_SETS)}
                   {l.status === "missed" ? " · missed" : ""}
                 </span>
               </li>
@@ -112,10 +111,7 @@ export default async function TodayPage() {
           {lifts.map((l) => (
             <li key={l.key} className="hairline-row">
               <span className={l.status === "completed" ? "text-text-dim" : "text-text"}>{l.name}</span>
-              <span className="caption whitespace-nowrap">
-                {formatLoad(l.weight)} × {l.reps}
-                {l.repUnit ?? ""}
-              </span>
+              <span className="caption whitespace-nowrap">{formatPrescription(l.weight, l.reps, l.repUnit)}</span>
             </li>
           ))}
         </ul>

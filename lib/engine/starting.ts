@@ -34,7 +34,7 @@ export function startingState(
 ): ExerciseState {
   const reps = Math.max(def.rangeMin, def.seedReps);
   if (def.isBodyweight) {
-    return { weight: 0, targetReps: reps, consecutiveHits: 0, consecutiveMisses: 0, note: null };
+    return { weight: 0, targetReps: reps, consecutiveHits: 0, consecutiveMisses: 0, variantIndex: 0, note: null };
   }
   let w = def.seedWeight * MULTIPLIERS[activity];
   if (activity === "returning_lifter" && bodyweightLb && bodyweightLb > 0) {
@@ -43,7 +43,7 @@ export function startingState(
   }
   if (activity !== "trained") w = Math.min(w, NON_TRAINED_CAP_LB);
   const weight = Math.max(MIN_LOAD, snapToLegal(w, "down"));
-  return { weight, targetReps: reps, consecutiveHits: 0, consecutiveMisses: 0, note: null };
+  return { weight, targetReps: reps, consecutiveHits: 0, consecutiveMisses: 0, variantIndex: 0, note: null };
 }
 
 /** Days after signup during which "Change starting weight" is available. */

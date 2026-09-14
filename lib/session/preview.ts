@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { DAYS, displayName, snapToLegal } from "@/lib/engine";
+import { DAYS, displayName, snapToLegal, variantFor } from "@/lib/engine";
 import { ensureExerciseStates, getProfile } from "./service";
 import { type LocalDay, weekDates } from "./dates";
 import type { ExerciseRow, StateRow } from "./types";
@@ -28,13 +28,15 @@ export async function previewToday(db: Db, userId: string, day: LocalDay): Promi
   const byKey = new Map<string, StateRow>(((states ?? []) as StateRow[]).map((s) => [s.exercise_key, s]));
   return ((exercises ?? []) as ExerciseRow[]).map((ex) => {
     const st = byKey.get(ex.exercise_key);
+    const vi = st?.variant_index ?? 0;
+    const v = variantFor(ex.exercise_key, vi);
     return {
       key: ex.exercise_key,
-      name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, day.date),
-      weight: ex.is_bodyweight ? 0 : snapToLegal(Number(st?.working_weight ?? ex.seed_weight), "up"),
-      reps: st?.target_reps ?? ex.seed_reps,
-      repUnit: ex.rep_unit,
-      isBodyweight: ex.is_bodyweight,
+      name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, day.date, vi, ex.exercise_key),
+      weight: v.isBodyweight ? 0 : snapToLegal(Number(st?.working_weight ?? v.startWeight), "up"),
+      reps: st?.target_reps ?? v.rangeMin,
+      repUnit: v.repUnit ?? null,
+      isBodyweight: v.isBodyweight,
     };
   });
 }
@@ -77,7 +79,7 @@ export async function previewWeek(db: Db, userId: string, today: LocalDay): Prom
   const { data: liftRows } = liveIds.length
     ? await db
         .from("session_lifts")
-        .select("session_id, exercise_key, display_name, order_index, prescribed_weight, prescribed_reps, status")
+        .select("session_id, exercise_key, display_name, variant_index, order_index, prescribed_weight, prescribed_reps, status")
         .in("session_id", liveIds)
         .order("order_index")
     : { data: [] };
@@ -92,34 +94,36 @@ export async function previewWeek(db: Db, userId: string, today: LocalDay): Prom
     const def = DAYS[dayIndex - 1];
     const session = sessionRows.find((s) => s.session_date === ymd && s.status !== "abandoned");
     const dayExercises = exByDay.get(dayIndex) ?? [];
-    const logged = ((liftRows ?? []) as { session_id: string; exercise_key: string; display_name: string; order_index: number; prescribed_weight: number; prescribed_reps: number; status: string }[])
+    const logged = ((liftRows ?? []) as { session_id: string; exercise_key: string; display_name: string; variant_index: number; order_index: number; prescribed_weight: number; prescribed_reps: number; status: string }[])
       .filter((l) => session && l.session_id === session.id)
       .sort((a, b) => a.order_index - b.order_index);
 
     const lifts =
       logged.length > 0
         ? logged.map((l) => {
-            const ex = dayExercises.find((e) => e.exercise_key === l.exercise_key);
+            const v = variantFor(l.exercise_key, l.variant_index ?? 0);
             return {
               key: l.exercise_key,
               name: l.display_name,
               weight: Number(l.prescribed_weight),
               reps: l.prescribed_reps,
-              repUnit: ex?.rep_unit ?? null,
-              isBodyweight: ex?.is_bodyweight ?? false,
+              repUnit: v.repUnit ?? null,
+              isBodyweight: v.isBodyweight,
               done: l.status === "completed",
               missed: l.status === "missed",
             };
           })
         : dayExercises.map((ex) => {
             const st = byKey.get(ex.exercise_key);
+            const vi = st?.variant_index ?? 0;
+            const v = variantFor(ex.exercise_key, vi);
             return {
               key: ex.exercise_key,
-              name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, date),
-              weight: ex.is_bodyweight ? 0 : snapToLegal(Number(st?.working_weight ?? ex.seed_weight), "up"),
-              reps: st?.target_reps ?? ex.seed_reps,
-              repUnit: ex.rep_unit,
-              isBodyweight: ex.is_bodyweight,
+              name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, date, vi, ex.exercise_key),
+              weight: v.isBodyweight ? 0 : snapToLegal(Number(st?.working_weight ?? v.startWeight), "up"),
+              reps: st?.target_reps ?? v.rangeMin,
+              repUnit: v.repUnit ?? null,
+              isBodyweight: v.isBodyweight,
             };
           });
 

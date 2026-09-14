@@ -36,9 +36,6 @@ interface Props {
   tz: string;
 }
 
-/** Seconds of rest before the faint "skip rest" link appears. Skipping is allowed, not encouraged. */
-const SKIP_REST_AFTER = 8;
-
 const WARMUP_REST = 45;
 const BETWEEN_LIFTS_REST = 90;
 
@@ -573,11 +570,9 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
           <div className="caption mt-6">{phase.logged}</div>
           <div className="absolute bottom-0 left-0 right-0 px-6 safe-bottom pb-6 text-center">
             <div className="faint">{phase.next}</div>
-            {now - phase.startedAt >= SKIP_REST_AFTER * 1000 && (
-              <button type="button" onClick={skipRest} className="faint mt-5 underline underline-offset-4 decoration-[#2A2A28]">
-                skip rest
-              </button>
-            )}
+            <button type="button" onClick={skipRest} className="faint mt-5 underline underline-offset-4 decoration-[#2A2A28]">
+              skip rest
+            </button>
           </div>
         </main>
       )}

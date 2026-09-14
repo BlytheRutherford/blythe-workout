@@ -6,10 +6,11 @@ import {
   exerciseByKey,
   liftResultFromSets,
   snapToLegal,
+  specForVariant,
   startingState,
+  variantFor,
   warmupSets,
   type ActivityLevel,
-  type ExerciseSpec,
   type ExerciseState,
 } from "@/lib/engine";
 import { type LocalDay, ymdToDate } from "./dates";
@@ -44,12 +45,9 @@ function toState(row: StateRow): ExerciseState {
     targetReps: row.target_reps,
     consecutiveHits: row.consecutive_hits,
     consecutiveMisses: row.consecutive_misses,
+    variantIndex: row.variant_index ?? 0,
     note: row.note,
   };
-}
-
-function toSpec(ex: ExerciseRow): ExerciseSpec {
-  return { key: ex.exercise_key, rangeMin: ex.range_min, rangeMax: ex.range_max, isBodyweight: ex.is_bodyweight };
 }
 
 // ---------------------------------------------------------------- profile
@@ -80,6 +78,7 @@ export async function ensureExerciseStates(
       target_reps: s.targetReps,
       consecutive_hits: 0,
       consecutive_misses: 0,
+      variant_index: 0,
       note: null,
     };
   });
@@ -100,6 +99,7 @@ export async function resetExerciseStates(db: Db, userId: string, activity: Acti
       target_reps: s.targetReps,
       consecutive_hits: 0,
       consecutive_misses: 0,
+      variant_index: 0,
       note: null,
     };
   });
@@ -137,7 +137,8 @@ async function loadBundle(db: Db, session: SessionRow): Promise<SessionBundle> {
       ...l,
       prescribed_weight: num(l.prescribed_weight),
       sets: (setsByLift.get(l.id) ?? []).sort((a, b) => order[a.kind] - order[b.kind] || a.set_number - b.set_number),
-      exercise: exById.get(l.exercise_id)!,
+      // the rep unit travels with the rung ("/side" once a lift goes unilateral)
+      exercise: { ...exById.get(l.exercise_id)!, rep_unit: variantFor(l.exercise_key, l.variant_index ?? 0).repUnit ?? null },
       lastLog: l.last_weight != null && l.last_reps != null ? { weight: num(l.last_weight), reps: l.last_reps } : null,
       formVideoPath: formByKey.get(l.exercise_key) ?? null,
     })),
@@ -228,14 +229,17 @@ export async function startSession(db: Db, userId: string, day: LocalDay): Promi
 
   const liftRows = (exercises as ExerciseRow[]).map((ex) => {
     const st = stateByKey.get(ex.exercise_key);
-    const weight = ex.is_bodyweight ? 0 : snapToLegal(num(st?.working_weight ?? ex.seed_weight), "up");
-    const reps = st?.target_reps ?? ex.seed_reps;
+    const vi = st?.variant_index ?? 0;
+    const v = variantFor(ex.exercise_key, vi);
+    const weight = v.isBodyweight ? 0 : snapToLegal(num(st?.working_weight ?? v.startWeight), "up");
+    const reps = st?.target_reps ?? v.rangeMin;
     return {
       session_id: session.id,
       user_id: userId,
       exercise_id: ex.id,
       exercise_key: ex.exercise_key,
-      display_name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, date),
+      display_name: displayName({ name: ex.name, variantRule: ex.variant_rule as "thu-press" | undefined }, date, vi, ex.exercise_key),
+      variant_index: vi,
       order_index: ex.order_index,
       prescribed_weight: weight,
       prescribed_reps: reps,
@@ -251,9 +255,8 @@ export async function startSession(db: Db, userId: string, day: LocalDay): Promi
 
   const setRows: Record<string, unknown>[] = [];
   for (const lift of lifts as LiftRow[]) {
-    const ex = (exercises as ExerciseRow[]).find((e) => e.id === lift.exercise_id)!;
     if (lift.order_index === 1) {
-      warmupSets(num(lift.prescribed_weight), lift.prescribed_reps, toSpec(ex)).forEach((w, i) =>
+      warmupSets(num(lift.prescribed_weight), lift.prescribed_reps, specForVariant(lift.exercise_key, lift.variant_index ?? 0)).forEach((w, i) =>
         setRows.push({
           session_id: session.id,
           lift_id: lift.id,
@@ -286,7 +289,7 @@ export async function startSession(db: Db, userId: string, day: LocalDay): Promi
 // ---------------------------------------------------------------- lifts & sets
 
 /** Applies the engine once per lift and records the outcome. Idempotent. */
-async function resolveLift(db: Db, userId: string, lift: LiftRow, exercise: ExerciseRow, result: "hit" | "miss") {
+async function resolveLift(db: Db, userId: string, lift: LiftRow, _exercise: ExerciseRow, result: "hit" | "miss") {
   if (lift.progression_applied) return;
   const { data: stRow, error } = await db
     .from("user_exercise_state")
@@ -296,12 +299,14 @@ async function resolveLift(db: Db, userId: string, lift: LiftRow, exercise: Exer
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
 
-  const spec = toSpec(exercise);
-  // The state at the time of the lift is what was prescribed today.
+  // Judge the lift on the rung it was actually performed on.
+  const variantIndex = lift.variant_index ?? 0;
+  const spec = specForVariant(lift.exercise_key, variantIndex);
   const current: ExerciseState = stRow
-    ? { ...toState(stRow as StateRow), weight: num(lift.prescribed_weight), targetReps: lift.prescribed_reps }
-    : { weight: num(lift.prescribed_weight), targetReps: lift.prescribed_reps, consecutiveHits: 0, consecutiveMisses: 0, note: null };
+    ? { ...toState(stRow as StateRow), weight: num(lift.prescribed_weight), targetReps: lift.prescribed_reps, variantIndex }
+    : { weight: num(lift.prescribed_weight), targetReps: lift.prescribed_reps, consecutiveHits: 0, consecutiveMisses: 0, variantIndex, note: null };
   const next = applyResult(current, spec, result);
+  const graduated = next.variantIndex !== variantIndex;
 
   const { error: upErr } = await db.from("user_exercise_state").upsert(
     {
@@ -311,9 +316,11 @@ async function resolveLift(db: Db, userId: string, lift: LiftRow, exercise: Exer
       target_reps: next.targetReps,
       consecutive_hits: next.consecutiveHits,
       consecutive_misses: next.consecutiveMisses,
+      variant_index: next.variantIndex,
       note: next.note,
-      last_hit_weight: result === "hit" ? num(lift.prescribed_weight) : (stRow?.last_hit_weight ?? null),
-      last_hit_reps: result === "hit" ? lift.prescribed_reps : (stRow?.last_hit_reps ?? null),
+      // A new movement has no comparable history, so the "last log" caption resets.
+      last_hit_weight: graduated ? null : result === "hit" ? num(lift.prescribed_weight) : (stRow?.last_hit_weight ?? null),
+      last_hit_reps: graduated ? null : result === "hit" ? lift.prescribed_reps : (stRow?.last_hit_reps ?? null),
       last_logged_at: new Date().toISOString(),
     },
     { onConflict: "user_id,exercise_key" },
@@ -448,12 +455,15 @@ export async function setStartingWeight(db: Db, userId: string, exerciseKey: str
   if (todayYmd > profile.calibration_ends_on) throw new ServiceError("Calibration window has ended.", 403);
   const def = exerciseByKey(exerciseKey);
   if (!def) throw new ServiceError("Unknown lift.", 404);
-  if (def.isBodyweight) throw new ServiceError("Bodyweight lift.", 400);
+  const { data: cur } = await db.from("user_exercise_state").select("variant_index").eq("user_id", userId).eq("exercise_key", exerciseKey).maybeSingle();
+  const vIndex = (cur?.variant_index as number | undefined) ?? 0;
+  const variant = variantFor(exerciseKey, vIndex);
+  if (variant.isBodyweight) throw new ServiceError("Bodyweight lift.", 400);
   const legal = snapToLegal(weight, "nearest");
   const { error } = await db
     .from("user_exercise_state")
     .upsert(
-      { user_id: userId, exercise_key: exerciseKey, working_weight: legal, target_reps: def.seedReps, consecutive_hits: 0, consecutive_misses: 0, note: null },
+      { user_id: userId, exercise_key: exerciseKey, working_weight: legal, target_reps: variant.rangeMin, consecutive_hits: 0, consecutive_misses: 0, variant_index: vIndex, note: null },
       { onConflict: "user_id,exercise_key" },
     );
   if (error) throw new ServiceError(error.message, 500);
@@ -466,13 +476,13 @@ export async function setStartingWeight(db: Db, userId: string, exerciseKey: str
     .eq("status", "pending")
     .eq("sessions.session_date", todayYmd);
   for (const l of (lifts ?? []) as { id: string }[]) {
-    await db.from("session_lifts").update({ prescribed_weight: legal, prescribed_reps: def.seedReps }).eq("id", l.id);
+    await db.from("session_lifts").update({ prescribed_weight: legal, prescribed_reps: variant.rangeMin }).eq("id", l.id);
     await db
       .from("session_sets")
-      .update({ prescribed_weight: legal, prescribed_reps: def.seedReps })
+      .update({ prescribed_weight: legal, prescribed_reps: variant.rangeMin })
       .eq("lift_id", l.id)
       .eq("kind", "work");
-    const ws = warmupSets(legal, def.seedReps, { key: def.key, rangeMin: def.rangeMin, rangeMax: def.rangeMax, isBodyweight: false });
+    const ws = warmupSets(legal, variant.rangeMin, specForVariant(exerciseKey, vIndex));
     for (let i = 0; i < ws.length; i++) {
       await db
         .from("session_sets")

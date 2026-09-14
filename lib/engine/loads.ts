@@ -58,3 +58,13 @@ export function formatLoad(w: number): string {
   if (w <= 0) return "BW";
   return Number.isInteger(w) ? String(w) : w.toFixed(1);
 }
+
+/**
+ * Human prescription with units: "20 lb × 8 reps × 3 sets", "BW × 8 reps/side".
+ * repUnit comes from the program ("/side", " breaths/side") or null for plain reps.
+ */
+export function formatPrescription(weight: number, reps: number, repUnit?: string | null, sets?: number): string {
+  const load = weight > 0 ? `${formatLoad(weight)} lb` : "BW";
+  const unit = !repUnit ? "reps" : repUnit.startsWith("/") ? `reps${repUnit}` : repUnit.trim();
+  return `${load} × ${reps} ${unit}${sets ? ` × ${sets} sets` : ""}`;
+}

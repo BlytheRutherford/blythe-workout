@@ -1,11 +1,18 @@
 import { MAX_LOAD, nextJumpPercent, nextLegal, prevLegal, snapToLegal } from "./loads";
+import { nextVariant, variantFor } from "./program";
 
-/** What the engine needs to know about a lift. */
+/** What the engine needs to know about a lift, at the rung it is currently on. */
 export interface ExerciseSpec {
   key: string;
   rangeMin: number;
   rangeMax: number;
   isBodyweight: boolean;
+}
+
+/** The spec for a given rung of a lift's ladder. */
+export function specForVariant(key: string, variantIndex: number): ExerciseSpec {
+  const v = variantFor(key, variantIndex);
+  return { key, rangeMin: v.rangeMin, rangeMax: v.rangeMax, isBodyweight: v.isBodyweight };
 }
 
 /** Per-user, per-lift progression state. */
@@ -15,6 +22,8 @@ export interface ExerciseState {
   targetReps: number;
   consecutiveHits: number;
   consecutiveMisses: number;
+  /** Which rung of the lift's variant ladder this lifter is on. */
+  variantIndex: number;
   /** Short whisper shown under the hero number, e.g. "Dumbbell max. Adding reps." */
   note: string | null;
 }
@@ -25,6 +34,7 @@ export type LiftResult = "hit" | "miss";
 export const HARD_CAP_BONUS = 8;
 
 export const NOTE_DUMBBELL_MAX = "Dumbbell max. Adding reps.";
+export const NOTE_BODYWEIGHT_CAP = "Bodyweight max. Adding reps.";
 export const NOTE_BODYWEIGHT = "Bodyweight. Adding reps.";
 export const NOTE_REP_CAP = "Rep cap. Slow the tempo.";
 export const NOTE_DELOAD = "Deloaded. Reps reset.";
@@ -75,6 +85,7 @@ export function hardCap(spec: ExerciseSpec): number {
  *    graduating or deloading.
  */
 export function applyResult(state: ExerciseState, spec: ExerciseSpec, result: LiftResult): ExerciseState {
+  const variantIndex = state.variantIndex ?? 0;
   const weight = spec.isBodyweight ? 0 : snapToLegal(state.weight, "up");
   const reps = Math.max(spec.rangeMin, Math.round(state.targetReps));
 
@@ -86,10 +97,11 @@ export function applyResult(state: ExerciseState, spec: ExerciseSpec, result: Li
         targetReps: spec.rangeMin,
         consecutiveHits: 0,
         consecutiveMisses: 0,
+        variantIndex,
         note: NOTE_DELOAD,
       };
     }
-    return { weight, targetReps: reps, consecutiveHits: 0, consecutiveMisses: misses, note: NOTE_HOLD };
+    return { weight, targetReps: reps, consecutiveHits: 0, consecutiveMisses: misses, variantIndex, note: NOTE_HOLD };
   }
 
   // hit
@@ -98,29 +110,54 @@ export function applyResult(state: ExerciseState, spec: ExerciseSpec, result: Li
   const cap = hardCap(spec);
 
   if (reps < ceiling) {
-    return { weight, targetReps: reps + 1, consecutiveHits: hits, consecutiveMisses: 0, note: null };
+    return { weight, targetReps: reps + 1, consecutiveHits: hits, consecutiveMisses: 0, variantIndex, note: null };
   }
 
-  if (spec.isBodyweight) {
-    if (reps < cap) {
-      return { weight: 0, targetReps: reps + 1, consecutiveHits: hits, consecutiveMisses: 0, note: NOTE_BODYWEIGHT };
-    }
-    return { weight: 0, targetReps: cap, consecutiveHits: hits, consecutiveMisses: 0, note: NOTE_REP_CAP };
+  const atLoadCeiling = spec.isBodyweight || weight >= MAX_LOAD;
+  if (!atLoadCeiling) {
+    return {
+      weight: nextLegal(weight),
+      targetReps: spec.rangeMin,
+      consecutiveHits: hits,
+      consecutiveMisses: 0,
+      variantIndex,
+      note: null,
+    };
   }
 
-  if (weight >= MAX_LOAD) {
-    if (reps < cap) {
-      return { weight: MAX_LOAD, targetReps: reps + 1, consecutiveHits: hits, consecutiveMisses: 0, note: NOTE_DUMBBELL_MAX };
-    }
-    return { weight: MAX_LOAD, targetReps: cap, consecutiveHits: hits, consecutiveMisses: 0, note: NOTE_REP_CAP };
+  // The load cannot go up. Spend the remaining reps first (hypertrophy is
+  // load-independent when sets are taken near failure), then graduate to the
+  // next rung of the ladder, which restarts double progression low.
+  if (reps < cap) {
+    return {
+      weight,
+      targetReps: reps + 1,
+      consecutiveHits: hits,
+      consecutiveMisses: 0,
+      variantIndex,
+      note: spec.isBodyweight ? NOTE_BODYWEIGHT : NOTE_DUMBBELL_MAX,
+    };
+  }
+
+  const next = nextVariant(spec.key, variantIndex);
+  if (next) {
+    return {
+      weight: next.isBodyweight ? 0 : snapToLegal(next.startWeight, "down"),
+      targetReps: next.rangeMin,
+      consecutiveHits: 0,
+      consecutiveMisses: 0,
+      variantIndex: variantIndex + 1,
+      note: next.cue ?? `New movement · ${next.name}.`,
+    };
   }
 
   return {
-    weight: nextLegal(weight),
-    targetReps: spec.rangeMin,
+    weight,
+    targetReps: cap,
     consecutiveHits: hits,
     consecutiveMisses: 0,
-    note: null,
+    variantIndex,
+    note: spec.isBodyweight ? NOTE_BODYWEIGHT_CAP : NOTE_REP_CAP,
   };
 }
 

@@ -33,8 +33,15 @@ on conflict (slug) do update set
   variant_rule = excluded.variant_rule,
   rep_unit = excluded.rep_unit;
 
--- Remove slots that no longer exist in the program.
-delete from public.exercises where slug not in (${EXERCISES.map((e) => q(e.slug)).join(", ")});
+-- Retire slots that are no longer in the program. Rows still referenced by a
+-- logged session are kept (the FK needs them) but parked outside the day grid
+-- so they never appear in a workout again.
+update public.exercises set slot_day = null, order_index = null
+where slug not in (${EXERCISES.map((e) => q(e.slug)).join(", ")});
+
+delete from public.exercises e
+where e.slug not in (${EXERCISES.map((e) => q(e.slug)).join(", ")})
+  and not exists (select 1 from public.session_lifts l where l.exercise_id = e.id);
 `;
 
 writeFileSync(new URL("../supabase/seed.sql", import.meta.url), sql);

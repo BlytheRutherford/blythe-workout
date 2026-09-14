@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   applyResult,
   effectiveCeiling,
+  EXERCISE_KEYS,
   EXERCISES,
+  exerciseByKey,
+  hardCap,
+  ladderLength,
+  specForVariant,
+  variantFor,
+  VARIANTS,
   exercisesForDay,
   formatLoad,
   HARD_CAP_BONUS,
@@ -29,6 +36,7 @@ const st = (weight: number, targetReps: number, extra: Partial<ExerciseState> = 
   targetReps,
   consecutiveHits: 0,
   consecutiveMisses: 0,
+  variantIndex: 0,
   note: null,
   ...extra,
 });
@@ -90,9 +98,10 @@ describe("double progression", () => {
   it("52.5 at cap stays there and adds bonus reps with a note", () => {
     const next = applyResult(st(52.5, 12), spec, "hit");
     expect(next).toMatchObject({ weight: MAX_LOAD, targetReps: 13, note: NOTE_DUMBBELL_MAX });
-    const capped = applyResult(st(52.5, 20), spec, "hit");
-    expect(capped.weight).toBe(MAX_LOAD);
-    expect(capped.targetReps).toBe(20);
+    // and once the bonus reps are spent it graduates rather than dead-ending
+    const graduated = applyResult(st(52.5, 20), specForVariant("incline-db-press", 0), "hit");
+    expect(graduated.variantIndex).toBe(1);
+    expect(graduated.weight).toBe(variantFor("incline-db-press", 1).startWeight);
   });
   it("bodyweight lifts progress by reps only", () => {
     expect(applyResult(st(0, 8), bw, "hit")).toMatchObject({ weight: 0, targetReps: 9 });
@@ -200,8 +209,84 @@ describe("starting loads", () => {
 });
 
 describe("program", () => {
-  it("has five lifts on each of five days", () => {
-    for (let d = 1; d <= 5; d++) expect(exercisesForDay(d)).toHaveLength(5);
-    expect(new Set(EXERCISES.map((e) => e.slug)).size).toBe(25);
+  it("has six lifts on each of five days", () => {
+    for (let d = 1; d <= 5; d++) expect(exercisesForDay(d)).toHaveLength(6);
+    expect(new Set(EXERCISES.map((e) => e.slug)).size).toBe(30);
+  });
+  it("gives every slot a ladder whose first rung matches the slot", () => {
+    for (const e of EXERCISES) {
+      const v = variantFor(e.key, 0);
+      expect(v.name).toBe(e.name);
+      expect(v.startWeight).toBe(e.seedWeight);
+      expect(v.isBodyweight).toBe(e.isBodyweight);
+      expect(v.rangeMin).toBe(e.rangeMin);
+      expect(v.rangeMax).toBe(e.rangeMax);
+    }
+  });
+  it("uses only legal loads on every rung of every ladder", () => {
+    for (const [key, ladder] of Object.entries(VARIANTS)) {
+      expect(ladder.length).toBeGreaterThan(0);
+      for (const v of ladder) {
+        if (v.isBodyweight) expect(v.startWeight).toBe(0);
+        else expect(isLegal(v.startWeight)).toBe(true);
+        expect(v.rangeMin).toBeLessThanOrEqual(v.rangeMax);
+        expect(v.emailName.length).toBeGreaterThan(0);
+      }
+      expect(ladderLength(key)).toBe(ladder.length);
+    }
+  });
+  it("covers every progression key with a ladder", () => {
+    for (const k of EXERCISE_KEYS) expect(VARIANTS[k]).toBeDefined();
+  });
+});
+
+describe("graduating past the 52.5 lb ceiling", () => {
+  const spec = specForVariant("goblet-squat", 0);
+
+  it("spends the bonus reps at 52.5 before changing anything", () => {
+    const next = applyResult(st(52.5, 12, { variantIndex: 0 }), spec, "hit");
+    expect(next).toMatchObject({ weight: 52.5, targetReps: 13, variantIndex: 0, note: NOTE_DUMBBELL_MAX });
+  });
+
+  it("moves to the next movement once 52.5 × the rep cap is beaten", () => {
+    const next = applyResult(st(52.5, hardCap(spec), { variantIndex: 0 }), spec, "hit");
+    expect(next.variantIndex).toBe(1);
+    expect(next.weight).toBe(variantFor("goblet-squat", 1).startWeight);
+    expect(next.targetReps).toBe(variantFor("goblet-squat", 1).rangeMin);
+    expect(next.consecutiveHits).toBe(0);
+    expect(next.note).toBeTruthy();
+  });
+
+  it("carries a bodyweight lift onto a loaded rung and back again", () => {
+    const bwSpec = specForVariant("pull-up", 0);
+    const graduated = applyResult(st(0, hardCap(bwSpec), { variantIndex: 0 }), bwSpec, "hit");
+    expect(graduated.variantIndex).toBe(1);
+    expect(graduated.weight).toBe(10); // weighted pull-up, DB between the feet
+    const tri = specForVariant("overhead-db-extension", 1);
+    const toBodyweight = applyResult(st(52.5, hardCap(tri), { variantIndex: 1 }), tri, "hit");
+    expect(toBodyweight.variantIndex).toBe(2);
+    expect(toBodyweight.weight).toBe(0);
+  });
+
+  it("stops at the top of the ladder instead of looping", () => {
+    const last = ladderLength("lateral-raise") - 1;
+    const spec2 = specForVariant("lateral-raise", last);
+    const next = applyResult(st(52.5, hardCap(spec2), { variantIndex: last }), spec2, "hit");
+    expect(next.variantIndex).toBe(last);
+    expect(next.targetReps).toBe(hardCap(spec2));
+  });
+
+  it("walks a whole ladder to the top without emitting an illegal load", () => {
+    const key = "db-rdl";
+    let s = { ...startingState(exerciseByKey(key)!, "trained"), variantIndex: 0 };
+    const seen: string[] = [];
+    for (let i = 0; i < 400; i++) {
+      const sp = specForVariant(key, s.variantIndex);
+      if (!sp.isBodyweight) expect(isLegal(s.weight)).toBe(true);
+      seen.push(`${s.variantIndex}:${s.weight}x${s.targetReps}`);
+      s = applyResult(s, sp, "hit");
+    }
+    expect(s.variantIndex).toBe(ladderLength(key) - 1);
+    expect(new Set(seen).size).toBeGreaterThan(50);
   });
 });

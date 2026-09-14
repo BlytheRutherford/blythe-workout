@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Screen, TabBar, Title, Wordmark } from "@/components/ui";
 import { ResumeBar } from "@/components/resume-bar";
-import { formatLoad } from "@/lib/engine";
+import { formatPrescription, WORK_SETS } from "@/lib/engine";
 import { DEFAULT_TZ, isValidTz, localDay } from "@/lib/session/dates";
 import { previewWeek } from "@/lib/session/preview";
 import { createClient, currentUser } from "@/lib/supabase/server";
@@ -55,8 +55,7 @@ export default async function WeekPage() {
                 <li key={l.key} className="flex items-baseline justify-between gap-4 py-2">
                   <span className={l.missed ? "text-text-faint" : "text-text-dim"}>{l.name}</span>
                   <span className="faint whitespace-nowrap">
-                    {formatLoad(l.weight)} × {l.reps}
-                    {l.repUnit ?? ""}
+                    {formatPrescription(l.weight, l.reps, l.repUnit, WORK_SETS)}
                     {l.missed ? " · missed" : ""}
                   </span>
                 </li>

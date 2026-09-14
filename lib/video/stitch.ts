@@ -4,7 +4,7 @@ import { createWriteStream } from "node:fs";
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { ZipArchive } from "archiver";
-import { emailName, EXERCISES, formatLoad } from "@/lib/engine";
+import { emailName, EXERCISES, formatPrescription, variantFor } from "@/lib/engine";
 import { ymdToDate } from "@/lib/session/dates";
 import type { ClipRow, LiftRow, SetRow } from "@/lib/session/types";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -106,7 +106,7 @@ export async function stitchLiftAndEmail(liftId: string): Promise<void> {
     admin.from("session_sets").select("*").eq("lift_id", liftId).eq("kind", "work").order("set_number"),
     admin.from("clips").select("*").eq("lift_id", liftId).order("set_number"),
     admin.from("users").select("email, delivery_email, records_video").eq("id", lift.user_id).single(),
-    admin.from("exercises").select("slug, exercise_key, rep_unit").eq("id", lift.exercise_id).single(),
+    admin.from("exercises").select("slug, exercise_key").eq("id", lift.exercise_id).single(),
   ]);
   if (!session || !user) return;
   if (!user.records_video) {
@@ -116,14 +116,15 @@ export async function stitchLiftAndEmail(liftId: string): Promise<void> {
 
   const def = EXERCISES.find((e) => e.slug === exercise?.slug);
   const date = ymdToDate(session.session_date);
-  const longName = def ? emailName(def, date) : lift.display_name;
+  const longName = def ? emailName(def, date, lift.variant_index ?? 0, lift.exercise_key) : lift.display_name;
   const dayNumber = (session.day_number as number | null) ?? 1;
   const subject = `Day ${dayNumber}: ${longName}`;
   const to = (user.delivery_email || user.email || "").trim();
-  const load = `${formatLoad(Number(lift.prescribed_weight))} × ${lift.prescribed_reps}${exercise?.rep_unit ?? ""}`;
+  const repUnit = variantFor(lift.exercise_key, lift.variant_index ?? 0).repUnit ?? null;
+  const load = formatPrescription(Number(lift.prescribed_weight), lift.prescribed_reps, repUnit);
   const setRows = ((sets ?? []) as SetRow[]).map((s) => ({
     n: s.set_number,
-    load: `${formatLoad(Number(s.prescribed_weight))} × ${s.prescribed_reps}${exercise?.rep_unit ?? ""}`,
+    load: formatPrescription(Number(s.prescribed_weight), s.prescribed_reps, repUnit),
     done: s.result === "completed",
     restSkipped: s.rest_skipped,
   }));
