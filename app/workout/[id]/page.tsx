@@ -24,15 +24,18 @@ export default async function WorkoutPage({ params }: PageProps<"/workout/[id]">
   const today = localDay(tz);
 
   const { count } = await db.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "complete");
+  const dayNumber = bundle.session.day_number ?? (count ?? 0) + 1;
 
   return (
     <Workout
       bundle={bundle}
       userId={user.id}
       dayShort={DAYS[bundle.session.day_index - 1].short}
-      dayNumber={(count ?? 0) + 1}
+      dayNumber={dayNumber}
       calibrating={today.ymd <= profile.calibration_ends_on}
       burnOverlay={profile.burn_overlay}
+      recordsVideo={profile.records_video}
+      recordAudio={profile.record_audio}
       tz={tz}
     />
   );

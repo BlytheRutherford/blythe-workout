@@ -29,6 +29,8 @@ export default async function SettingsPage() {
           email={profile.email}
           deliveryEmail={profile.delivery_email ?? ""}
           burnOverlay={profile.burn_overlay}
+          recordsVideo={profile.records_video}
+          recordAudio={profile.record_audio}
           calibrationDaysLeft={today.ymd <= profile.calibration_ends_on ? daysLeft : 0}
         />
         {profile.role === "admin" && (

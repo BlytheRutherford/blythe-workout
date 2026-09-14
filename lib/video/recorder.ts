@@ -65,7 +65,8 @@ export class Recorder {
   start(stream: MediaStream, preview: HTMLVideoElement | null, overlay: OverlayText | null): void {
     this.chunks = [];
     this.overlay = overlay;
-    const mime = pickMimeType();
+    const hasAudio = stream.getAudioTracks().length > 0;
+    const mime = pickMimeType(hasAudio);
     let source = stream;
 
     if (overlay && preview && typeof HTMLCanvasElement !== "undefined" && "captureStream" in HTMLCanvasElement.prototype) {
@@ -77,7 +78,8 @@ export class Recorder {
       }
     }
 
-    const opts: MediaRecorderOptions = { videoBitsPerSecond: VIDEO_BITRATE, audioBitsPerSecond: AUDIO_BITRATE };
+    const opts: MediaRecorderOptions = { videoBitsPerSecond: VIDEO_BITRATE };
+    if (hasAudio) opts.audioBitsPerSecond = AUDIO_BITRATE;
     if (mime) opts.mimeType = mime;
     let rec: MediaRecorder;
     try {

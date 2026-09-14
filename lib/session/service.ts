@@ -206,9 +206,15 @@ export async function startSession(db: Db, userId: string, day: LocalDay): Promi
   if (sErr) throw new ServiceError(sErr.message, 500);
   const stateByKey = new Map<string, StateRow>((states as StateRow[]).map((s) => [s.exercise_key, s]));
 
+  // Lifetime day number is fixed when the day starts so per-lift emails can say "Day N".
+  const { count: doneCount } = await db
+    .from("sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "complete");
   const { data: sessionRow, error: insErr } = await db
     .from("sessions")
-    .insert({ user_id: userId, session_date: day.ymd, day_index: day.dayIndex, status: "in_progress" })
+    .insert({ user_id: userId, session_date: day.ymd, day_index: day.dayIndex, status: "in_progress", day_number: (doneCount ?? 0) + 1 })
     .select("*")
     .single();
   if (insErr) {
@@ -332,7 +338,7 @@ export interface LogSetResult {
 }
 
 /** LOG SET: stores the shown prescription as a hit. Third work set closes the lift and runs the engine. */
-export async function logSet(db: Db, userId: string, setId: string): Promise<LogSetResult> {
+export async function logSet(db: Db, userId: string, setId: string, hasClip = false): Promise<LogSetResult> {
   const { data: setRow, error } = await db.from("session_sets").select("*").eq("id", setId).eq("user_id", userId).maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   if (!setRow) throw new ServiceError("Set not found.", 404);
@@ -353,6 +359,7 @@ export async function logSet(db: Db, userId: string, setId: string): Promise<Log
         actual_weight: set.prescribed_weight,
         actual_reps: set.prescribed_reps,
         logged_at: new Date().toISOString(),
+        has_clip: hasClip,
       })
       .eq("id", set.id)
       .select("*")
@@ -414,12 +421,15 @@ export async function completeSession(db: Db, userId: string, sessionId: string)
       }
     }
   }
-  const { count } = await db
-    .from("sessions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("status", "complete");
-  const dayNumber = (count ?? 0) + 1;
+  let dayNumber = bundle.session.day_number;
+  if (!dayNumber) {
+    const { count } = await db
+      .from("sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "complete");
+    dayNumber = (count ?? 0) + 1;
+  }
   const { data, error } = await db
     .from("sessions")
     .update({ status: "complete", day_number: dayNumber, completed_at: new Date().toISOString() })
@@ -473,6 +483,20 @@ export async function setStartingWeight(db: Db, userId: string, exerciseKey: str
     }
   }
   return legal;
+}
+
+/** The lifter skipped the rest after this set (allowed, discouraged, recorded). */
+export async function skipRest(db: Db, userId: string, setId: string): Promise<void> {
+  const { error } = await db.from("session_sets").update({ rest_skipped: true }).eq("id", setId).eq("user_id", userId);
+  if (error) throw new ServiceError(error.message, 500);
+}
+
+/** Wipes every session, set, clip and lift state; restarts at Day 1 with fresh starting loads. */
+export async function resetProgress(db: Db, userId: string): Promise<void> {
+  const { error } = await db.rpc("reset_own_progress");
+  if (error) throw new ServiceError(error.message, 500);
+  const profile = await getProfile(db, userId);
+  if (profile?.activity_level) await ensureExerciseStates(db, userId, profile.activity_level, profile.weight_lb);
 }
 
 // ---------------------------------------------------------------- clips

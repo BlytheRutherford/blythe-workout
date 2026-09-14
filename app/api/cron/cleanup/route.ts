@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { processLiftIfReady } from "@/lib/video/stitch";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
- * Daily: delete day videos / zips / leftover clips older than 8 days
- * (signed links last 7). Vercel Cron sends Authorization: Bearer CRON_SECRET.
+ * Daily (Vercel Cron, Authorization: Bearer CRON_SECRET):
+ *  - delete every video / clip under sessions/{user}/{date} older than 8 days (signed links last 7)
+ *  - sweep completed lifts whose email is still pending/stuck for over an hour
  */
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization") ?? "";
@@ -15,12 +17,7 @@ export async function GET(request: Request) {
   }
   const admin = createAdminClient();
   const cutoff = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
-  const { data: sessions } = await admin
-    .from("sessions")
-    .select("id, user_id, session_date, video_path")
-    .lt("session_date", cutoff)
-    .not("video_path", "is", null)
-    .limit(200);
+  const { data: sessions } = await admin.from("sessions").select("id, user_id, session_date").lt("session_date", cutoff).limit(300);
   let removed = 0;
   for (const s of sessions ?? []) {
     const prefix = `${s.user_id}/${s.session_date}`;
@@ -30,14 +27,21 @@ export async function GET(request: Request) {
       const { error } = await admin.storage.from("sessions").remove(paths);
       if (!error) removed += paths.length;
     }
-    await admin.from("sessions").update({ video_path: null }).eq("id", s.id);
+    await admin.from("session_lifts").update({ video_path: null }).eq("session_id", s.id).not("video_path", "is", null);
+    await admin.from("clips").delete().eq("session_id", s.id);
   }
-  // Orphan clips from days that never completed.
-  const { data: stale } = await admin.from("clips").select("id, storage_path").lt("created_at", new Date(Date.now() - 8 * 86400000).toISOString()).limit(500);
-  if (stale?.length) {
-    await admin.storage.from("sessions").remove(stale.map((c) => c.storage_path));
-    await admin.from("clips").delete().in("id", stale.map((c) => c.id));
-    removed += stale.length;
+  const staleBefore = new Date(Date.now() - 3600_000).toISOString();
+  const { data: stuck } = await admin
+    .from("session_lifts")
+    .select("id")
+    .eq("status", "completed")
+    .in("email_status", ["pending", "stitching"])
+    .lt("finished_at", staleBefore)
+    .limit(20);
+  let swept = 0;
+  for (const l of stuck ?? []) {
+    await processLiftIfReady(l.id, true);
+    swept++;
   }
-  return NextResponse.json({ ok: true, removed });
+  return NextResponse.json({ ok: true, removed, swept });
 }

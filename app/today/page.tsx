@@ -72,13 +72,12 @@ export default async function TodayPage() {
               </li>
             ))}
           </ul>
-          <p className="caption mt-6">
-            {s.email_status === "sent"
-              ? `Emailed: Day ${s.day_number} of Blythe Workouts`
-              : s.email_status === "failed"
-                ? "Email failed."
-                : "Preparing your video…"}
-          </p>
+          {profile.records_video && (
+            <p className="caption mt-6">
+              {session.lifts.filter((l) => l.status === "completed" && l.email_status === "sent").length} of{" "}
+              {session.lifts.filter((l) => l.status === "completed").length} lifts emailed
+            </p>
+          )}
           <Link href={`/workout/${s.id}/complete`} className="link mt-3 self-start">
             View day
           </Link>

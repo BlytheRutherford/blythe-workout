@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Digits, Pill, Select } from "@/components/ui";
 import { formatLoad, LEGAL_LOADS } from "@/lib/engine";
 import type { SessionBundle, SetRow } from "@/lib/session/types";
-import { getCamera, releaseCamera } from "@/lib/video/camera";
+import { getCamera, isFrontCamera, releaseCamera } from "@/lib/video/camera";
 import { Recorder, type RecordingResult } from "@/lib/video/recorder";
 import { uploadQueue } from "@/lib/video/uploads";
 import { acquireWakeLock, releaseWakeLock } from "@/lib/video/wakelock";
@@ -17,7 +17,7 @@ type Phase =
   | { kind: "countdown"; n: number }
   | { kind: "recording" }
   | { kind: "saving" }
-  | { kind: "rest"; endsAt: number; logged: string; next: string }
+  | { kind: "rest"; endsAt: number; startedAt: number; logged: string; next: string; setId: string }
   | { kind: "finishing"; message: string }
   | { kind: "error"; message: string };
 
@@ -28,8 +28,15 @@ interface Props {
   dayNumber: number;
   calibrating: boolean;
   burnOverlay: boolean;
+  /** Only accounts with records_video see the camera flow; everyone else logs sets directly. */
+  recordsVideo: boolean;
+  /** Microphone capture is off by default so background music keeps playing on iPhone. */
+  recordAudio: boolean;
   tz: string;
 }
+
+/** Seconds of rest before the faint "skip rest" link appears. Skipping is allowed, not encouraged. */
+const SKIP_REST_AFTER = 8;
 
 const WARMUP_REST = 45;
 const BETWEEN_LIFTS_REST = 90;
@@ -53,22 +60,7 @@ function mmss(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function beep() {
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.value = 880;
-    g.gain.value = 0.08;
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.18);
-    setTimeout(() => ctx.close().catch(() => {}), 400);
-  } catch {}
-}
-
-export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrating, burnOverlay, tz }: Props) {
+export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrating, burnOverlay, recordsVideo, recordAudio, tz }: Props) {
   const router = useRouter();
   const [bundle, setBundle] = useState<SessionBundle>(initial);
   const [phase, setPhase] = useState<Phase>({ kind: "live" });
@@ -78,6 +70,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [uploads, setUploads] = useState({ pending: 0, failed: 0 });
   const [busy, setBusy] = useState(false);
+  const [mirror, setMirror] = useState(true);
 
   const recorder = useRef<Recorder | null>(null);
   const phaseRef = useRef<Phase>({ kind: "live" });
@@ -125,10 +118,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
       const t = Date.now();
       setNow(t);
       if (phase.kind === "recording") setElapsed(recorder.current?.elapsed() ?? 0);
-      if (phase.kind === "rest" && t >= phase.endsAt) {
-        beep();
-        setPhase({ kind: "live" });
-      }
+      if (phase.kind === "rest" && t >= phase.endsAt) setPhase({ kind: "live" });
     }, 250);
     return () => window.clearInterval(id);
   }, [phase]);
@@ -148,8 +138,9 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
     if (!lift || !set) return;
     setBusy(true);
     try {
-      const stream = await getCamera();
+      const stream = await getCamera(recordAudio);
       await attachPreview(stream);
+      setMirror(isFrontCamera());
       setCameraFailed(false);
       setBusy(false);
       runCountdown(3);
@@ -252,7 +243,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
         const res = await fetch(`/api/session/${session.id}/log-set`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ setId: s.id, kind: s.kind }),
+          body: JSON.stringify({ setId: s.id, kind: s.kind, hasClip: Boolean(clip) && s.kind === "work" }),
         });
         if (res.ok) {
           const j = await res.json();
@@ -308,7 +299,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
           : `next · set ${ns.set_number} of 3 · ${formatLoad(ns.prescribed_weight)} × ${ns.prescribed_reps}`
         : "";
     }
-    setPhase({ kind: "rest", endsAt: restEndsAt(restSeconds), logged, next });
+    setPhase({ kind: "rest", endsAt: restEndsAt(restSeconds), startedAt: restEndsAt(0), logged, next, setId: s.id });
   }
 
   async function finishDay() {
@@ -348,6 +339,20 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
     else setPhase({ kind: "live" });
   }
 
+  // ---- skip rest (allowed, discouraged, recorded on the set)
+  async function skipRest() {
+    if (phase.kind !== "rest") return;
+    const setId = phase.setId;
+    setPhase({ kind: "live" });
+    try {
+      await fetch(`/api/session/${session.id}/skip-rest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ setId }),
+      });
+    } catch {}
+  }
+
   // ---- calibration
   async function changeStartingWeight(weight: number) {
     if (!lift) return;
@@ -384,7 +389,7 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
         playsInline
         muted
         autoPlay
-        className={`absolute inset-0 w-full h-full object-cover bg-black ${phase.kind === "recording" || phase.kind === "saving" ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 w-full h-full object-cover bg-black ${mirror ? "-scale-x-100" : ""} ${phase.kind === "recording" || phase.kind === "saving" ? "opacity-100" : "opacity-0"}`}
       />
       <input
         ref={fileRef}
@@ -486,6 +491,10 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
             <Pill onClick={logWithoutVideo} disabled={busy}>
               Warm-up done
             </Pill>
+          ) : !recordsVideo ? (
+            <Pill onClick={logWithoutVideo} disabled={busy}>
+              Log set
+            </Pill>
           ) : (
             <>
               <Pill onClick={onRecord} disabled={busy}>
@@ -554,6 +563,11 @@ export function Workout({ bundle: initial, userId, dayShort, dayNumber, calibrat
           <div className="caption mt-6">{phase.logged}</div>
           <div className="absolute bottom-0 left-0 right-0 px-6 safe-bottom pb-6 text-center">
             <div className="faint">{phase.next}</div>
+            {now - phase.startedAt >= SKIP_REST_AFTER * 1000 && (
+              <button type="button" onClick={skipRest} className="faint mt-5 underline underline-offset-4 decoration-[#2A2A28]">
+                skip rest
+              </button>
+            )}
           </div>
         </main>
       )}

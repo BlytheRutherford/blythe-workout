@@ -1,6 +1,6 @@
 # Blythe Workout
 
-iPhone-first PWA at **https://blytheworkout.com**. Five dumbbell lifts a day, Monday–Friday, the same program for everyone; only starting weights differ. Every set is recorded, the day's clips are stitched into one video and emailed as **"Day N of Blythe Workouts"**.
+iPhone-first PWA at **https://blytheworkout.com**. Five dumbbell lifts a day, Monday–Friday, the same program for everyone; only starting weights differ. On the recording account every set is filmed (front camera, video-only so background music keeps playing); as soon as a lift's three sets are done they are stitched into one video and emailed as **"Day N: Dumbbell incline press"**.
 
 Stack: Next.js 16 (App Router, TypeScript, Tailwind v4), Supabase (auth + Postgres + Storage + Edge Function), Vercel (hosting, cron), Resend (mail). Butter Black design: `#0A0A0A` background, `#F3E5AB` for every title, hero number and pill. IBM Plex Sans for UI, Fraunces for giant numbers.
 
@@ -51,15 +51,18 @@ Deploy: `npx vercel deploy --prod` (project is linked in `.vercel/`). Vercel Cro
 
 ## How a day works
 
-1. **Today** lists the day's five lifts with weight × reps from the engine. Weekends show *Yoga day · Yoga With Adriene · No lift prescribed.* The 2-mile walk is outside the app (gray note only).
-2. **Live lift**: `MON · 1/5`, lift name, optional *Form video* link, `THIS LOG` + giant `40 × 9`, gray *last log*, three set pips, *Change starting weight* (first 14 days only), and one pill: **RECORD**. The first lift of the day has two warm-up sets first (≈50 % × 5, ≈75 % × 3) logged with *Warm-up done*; they never touch the engine.
-3. **RECORD** → camera (rear, from the tap) → giant **3 · 2 · 1** (tap to cancel, nothing written) → recording starts at 0 with the overlay `MON · DAY 1 · INCLINE PRESS` / `40 × 9` and `● REC 0:12`. Only pill: **LOG SET**.
-4. **LOG SET** → stop → the last 3 s are dropped (whole 1-s fragments, never to empty) → clip queued for upload (IndexedDB-backed, retried) → the set is stored as a hit at the shown prescription → **rest** with a giant timer, *no skip*, auto-advance at 0:00 (between sets: the lift's rest; between lifts: 90 s; after warm-ups: 45 s).
+1. **Today** lists the day's five lifts with weight × reps from the engine. Weekends show *Yoga day · Yoga With Adriene · No lift prescribed.* The 2-mile walk is outside the app (gray note only). The lifetime day number ("Day N") is fixed when the day starts.
+2. **Live lift**: `MON · 1/5`, lift name, optional *Form video* link, `THIS LOG` + giant `40 × 9`, gray *last log*, three set pips, *Change starting weight* (first 14 days only), and one pill: **RECORD** (accounts without `records_video` get **LOG SET** instead and never touch the camera). The first lift of the day has two warm-up sets first (≈50 % × 5, ≈75 % × 3) logged with *Warm-up done*; they never touch the engine.
+3. **RECORD** → front camera, video only (from the tap) → giant **3 · 2 · 1** (tap to cancel, nothing written) → recording starts at 0 with the overlay `MON · DAY 1 · INCLINE PRESS` / `40 × 9` and `● REC 0:12`. Only pill: **LOG SET**. The preview is mirrored; the file is not.
+4. **LOG SET** → stop → the last 3 s are dropped (whole 1-s fragments, never to empty) → clip queued for upload (IndexedDB-backed, retried) → the set is stored as a hit at the shown prescription → **rest** with a giant timer and auto-advance at 0:00 (between sets: the lift's rest; between lifts: 90 s; after warm-ups: 45 s). A faint *skip rest* link appears after 8 s; skipping is allowed, discouraged, and recorded on the set (`rest_skipped`, visible in the CSV and in the lift email).
 5. Leaving a lift early (the `‹` at the top, with an inline confirm) counts as a miss. Closing the app mid-lift and coming back another day also counts it as a miss; untouched lifts are left alone.
-6. After the last lift the day is closed, `day_number` is assigned (lifetime completed lift days), and the server stitches every clip into one file with ffmpeg (stream copy, `+faststart`, `+genpts`), uploads `sessions/{user}/{date}/day-N.mp4`, and emails a 7-day signed link plus the lift list (file attached when under 20 MB). If concat fails: zip of clips + `youtube-description.txt`. If the zip can't be stored: per-clip links. Email failure never fails the workout; **Retry email** is on the Day-complete screen.
+6. **When a lift's third set is logged and its clips are uploaded**, the server stitches the three clips into one file with ffmpeg (stream copy, `+faststart`, `+genpts`), uploads `sessions/{user}/{date}/{exercise}.mp4`, and emails **"Day N: Dumbbell incline press"** with a 7-day signed link and the set list (file attached when under 20 MB). If concat fails: zip of clips + `youtube-description.txt`. If the zip can't be stored: per-clip links. A clip that never uploads is not waited for forever — closing the day (or the daily cron) emails whatever exists. Email failure never fails the workout; per-lift **Retry** is on the Day-complete screen.
 7. The **overlay is burned into the file** through a canvas composite when the browser allows it (Settings → *Burn weight × reps into video*); if the composite is refused the raw camera stream is recorded and the on-screen overlay stays.
+8. **Microphone is off by default.** Capturing the mic makes iOS switch to a record audio session, which pauses whatever music is playing; video-only capture leaves it alone. Settings → *Record microphone* turns sound on (and says it pauses music). Nothing in the app plays audio.
 
 Camera fallback: if `getUserMedia` fails, *Choose from Camera Roll* (native picker) or *Log without video* appear under RECORD.
+
+**Reset all exercises** (Settings) deletes every session, set, clip and video for the account, puts every lift back to its starting load, reopens the 14-day calibration and restarts at Day 1 — for testing the app before the real start.
 
 ## Progression engine (pure TypeScript)
 
@@ -97,11 +100,11 @@ Sources: Singer et al. 2024 <https://www.frontiersin.org/journals/sports-and-act
 
 `users`, `exercises`, `user_exercise_state`, `sessions`, `session_lifts` (the day's prescription snapshot), `session_sets`, `clips`, `form_videos`, `photos`. RLS on everywhere; users own their rows; everyone signed in can read `form_videos` and the `form` bucket; only the admin writes them. Storage: `form/{slug}.mp4`, `sessions/{user}/{date}/{exercise}-set{n}.mp4` and `day-N.mp4`, `photos/{user}/…`.
 
-Admin: the auth trigger promotes `app_config.admin_email` to `role = admin`; `/admin/form-videos` (one official clip per lift, SET / REPLACE) is admin-only.
+Admin: the auth trigger promotes `app_config.admin_email` to `role = admin` and turns on `records_video`; `/admin/form-videos` (one official clip per lift, SET / REPLACE) is admin-only. Recording + emails are per-account (`users.records_video`, service-role only) — the admin has it; other accounts just log sets.
 
 ## Known limits
 
-- Supabase Free caps a single file at **50 MB**. A full day at 1.5 Mbps is usually 60–120 MB, so on the Free plan the day video upload can fail and the pipeline falls back to per-clip links (each clip is well under 50 MB). Supabase Pro ($25/mo) raises the limit and makes the single day video reliable.
+- Supabase Free caps a single file at **50 MB**. A three-set lift video at 1.5 Mbps is typically 15–30 MB, so it fits; if a lift ever exceeds it the pipeline falls back to per-clip links.
 - Supabase's built-in auth mailer sends **2 emails/hour** (confirmations, password resets). Configure custom SMTP with Resend in Supabase → Auth → SMTP once the domain is verified for a normal limit.
 - iOS keeps the screen on during recording/rest via the Wake Lock API (reliable in installed web apps from iOS 18.4). Camera permission is asked once per launch in an installed PWA — that's an iOS behaviour.
 - Chrome/Android record WebM; the day video is then `.webm`.

@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { readJson, withUser } from "@/lib/api";
 import { recordClip } from "@/lib/session/service";
+import { processLiftIfReady } from "@/lib/video/stitch";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 interface Body {
   liftId: string;
@@ -26,5 +30,7 @@ export const POST = withUser(async ({ db, user, request, params }) => {
     durationMs: Number(b.durationMs) || 0,
     trimmedMs: Number(b.trimmedMs) || 0,
   });
+  // The last clip of a completed lift kicks off the stitch + email.
+  after(() => processLiftIfReady(b.liftId));
   return NextResponse.json({ ok: true, clipId: clip.id });
 });
