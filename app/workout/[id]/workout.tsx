@@ -460,7 +460,7 @@ export function Workout({ bundle: initial, dayLabel, dayName, warmup }: Props) {
           )}
 
           <div className="flex-1 flex flex-col justify-center py-6">
-            <div className="caption mb-3">{set.kind === "warmup" ? `Ramp-up set ${set.set_number} of ${warmups.length}, lighter than your working sets` : `Set ${set.set_number} of ${workSets.length}`}</div>
+            <div className="caption mb-3">{set.kind === "warmup" ? `Ramp-up set ${set.set_number} of ${warmups.length}${set.prescribed_weight > 0 ? ", lighter than your working sets" : ", easy reps"}` : `Set ${set.set_number} of ${workSets.length}`}</div>
             <div className="hero" style={{ fontSize: fitHero(`${formatLoad(set.prescribed_weight)} × ${set.prescribed_reps}`) }}>
               <Digits value={`${formatLoad(set.prescribed_weight)} × ${set.prescribed_reps}`} />
             </div>

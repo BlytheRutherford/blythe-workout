@@ -17,12 +17,12 @@ const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 function DayHeading({ dayIndex, suffix }: { dayIndex: number; suffix?: string }) {
   const def = DAYS[dayIndex - 1];
   return (
-    <div className="mt-12 mb-5">
-      <div className="title text-[76px] text-ember leading-[0.82]">
+    <div className="mt-8 mb-4">
+      <div className="title text-[64px] text-ember leading-[0.82]">
         {def.label}
         {suffix && <span className="text-bone"> {suffix}</span>}
       </div>
-      <div className="title text-[30px] mt-2">{def.name}</div>
+      <div className="title text-[28px] mt-1.5">{def.name}</div>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export default async function TodayPage() {
   await finalizeStaleSessions(db, user.id, day.ymd);
   const [session, week] = await Promise.all([getSessionForDate(db, user.id, day.ymd), weekPlan(db, user.id, day)]);
   const weekLine = (
-    <div className="mb-6">
+    <div className="mb-5">
       <div className="flex items-baseline justify-between mb-2">
         <span className="caption">
           {Math.min(week.count, week.target)} of {week.target} this week
@@ -64,7 +64,7 @@ export default async function TodayPage() {
           <Wordmark />
           <DayHeading dayIndex={s.day_index} suffix="done" />
           {weekLine}
-          <ul className="panel">
+          <ul className="panel panel-tight">
             {session.lifts.map((l) => {
               const weights = l.sets.filter((x) => x.kind === "work" && x.result === "completed").map((x) => x.actual_weight ?? x.prescribed_weight);
               return (
@@ -120,7 +120,7 @@ export default async function TodayPage() {
         <Wordmark />
         <DayHeading dayIndex={dayIndex} />
         {weekLine}
-        <ul className="panel">
+        <ul className="panel panel-tight">
           {lifts.map((l) => (
             <li key={l.key} className="hairline-row">
               <span className={l.status === "completed" || l.status === "missed" ? "text-bone-faint" : "text-bone"}>{l.name}</span>
@@ -134,7 +134,7 @@ export default async function TodayPage() {
         <Link href="/week" className="link self-start text-[14px] mt-3">
           See the whole week
         </Link>
-        <div className="flex-1 min-h-8" />
+        <div className="flex-1 min-h-5" />
         {weekDone && <p className="caption mb-4">All {week.target} done this week. Rest up, or train anyway.</p>}
         {session ? <PillLink href={`/workout/${session.session.id}`}>Continue {DAYS[dayIndex - 1].label}</PillLink> : <StartWorkout label={`Start ${DAYS[dayIndex - 1].label}`} />}
       </Screen>
