@@ -3,8 +3,6 @@ export const DEFAULT_TZ = "America/Chicago";
 export interface LocalDay {
   /** YYYY-MM-DD in the user's zone */
   ymd: string;
-  /** 1–5 Mon–Fri, 0 for Sat/Sun */
-  dayIndex: number;
   /** 0–6 Sun–Sat */
   weekday: number;
   /** Date at local midnight (for ISO-week math) */
@@ -34,9 +32,8 @@ export function localDay(tz: string, at: Date = new Date()): LocalDay {
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   const ymd = `${get("year")}-${get("month")}-${get("day")}`;
   const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
-  const dayIndex = weekday >= 1 && weekday <= 5 ? weekday : 0;
   const [y, m, d] = ymd.split("-").map(Number);
-  return { ymd, dayIndex, weekday, date: new Date(y, m - 1, d) };
+  return { ymd, weekday, date: new Date(y, m - 1, d) };
 }
 
 export function ymdToDate(ymd: string): Date {
@@ -56,18 +53,13 @@ export function toYmd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/**
- * The Mon–Fri dates of the training week to show: the current week on a
- * weekday, the coming week on Saturday/Sunday (what's ahead is more useful
- * than what just finished).
- */
-export function weekDates(day: LocalDay): { dayIndex: number; ymd: string; date: Date }[] {
-  const offsetToMonday = day.weekday === 0 ? 1 : day.weekday === 6 ? 2 : 1 - day.weekday;
+/** The Monday–Sunday week containing `day`: seven dates, Monday first. */
+export function weekOf(day: LocalDay): { ymd: string; date: Date; weekday: number }[] {
   const monday = new Date(day.date);
-  monday.setDate(monday.getDate() + offsetToMonday);
-  return [1, 2, 3, 4, 5].map((i) => {
+  monday.setDate(monday.getDate() - ((day.weekday + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
-    d.setDate(d.getDate() + (i - 1));
-    return { dayIndex: i, ymd: toYmd(d), date: d };
+    d.setDate(d.getDate() + i);
+    return { ymd: toYmd(d), date: d, weekday: d.getDay() };
   });
 }

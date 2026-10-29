@@ -8,7 +8,7 @@ values
   ('mon-lateral-raise', 'lateral-raise', 'Lateral raise', 1, 4, 75, 10, 15, false, false, 'isolation', 7.5, 10, null, null),
   ('mon-hanging-knee-raise', 'hanging-knee-raise', 'Hanging knee raise', 1, 5, 75, 8, 12, false, true, 'hanging', 0, 8, null, null),
   ('mon-anti-rotation-press', 'anti-rotation-press', 'Half-kneeling anti-rotation press', 1, 6, 60, 8, 12, true, false, 'core', 20, 8, null, ' breaths/side'),
-  ('tue-pull-up', 'pull-up', 'Pull-up', 2, 1, 120, 8, 12, false, true, 'compound', 0, 8, null, null),
+  ('tue-pull-up', 'pull-up', 'Pull-up', 2, 1, 120, 5, 10, false, true, 'compound', 0, 5, null, null),
   ('tue-single-arm-db-row', 'single-arm-db-row', 'Single-arm DB row', 2, 2, 90, 8, 12, true, false, 'unilateral', 30, 8, null, '/side'),
   ('tue-chest-supported-db-row', 'chest-supported-db-row', 'Chest-supported DB row', 2, 3, 90, 8, 12, false, false, 'compound', 25, 8, null, null),
   ('tue-rear-delt-fly', 'rear-delt-fly', 'Rear-delt fly', 2, 4, 75, 10, 15, false, false, 'isolation', 10, 10, null, null),
@@ -17,7 +17,7 @@ values
   ('wed-goblet-squat', 'goblet-squat', 'Goblet squat', 3, 1, 120, 8, 12, false, false, 'compound', 30, 8, null, null),
   ('wed-rfe-split-squat', 'rfe-split-squat', 'RFE split squat', 3, 2, 120, 8, 12, true, false, 'unilateral', 15, 8, null, '/side'),
   ('wed-db-rdl', 'db-rdl', 'DB RDL', 3, 3, 90, 8, 12, false, false, 'compound', 30, 8, null, null),
-  ('wed-nordic-curl', 'nordic-curl', 'Assisted Nordic curl', 3, 4, 90, 5, 10, false, true, 'compound', 0, 5, null, null),
+  ('wed-db-leg-curl', 'db-leg-curl', 'Prone DB leg curl', 3, 4, 75, 10, 15, false, false, 'isolation', 15, 10, null, null),
   ('wed-db-hip-thrust', 'db-hip-thrust', 'DB hip thrust', 3, 5, 75, 10, 15, false, false, 'compound', 30, 10, null, null),
   ('wed-single-leg-calf-raise', 'single-leg-calf-raise', 'Single-leg calf raise', 3, 6, 60, 10, 15, true, false, 'isolation', 20, 10, null, '/side'),
   ('thu-press', 'thu-press', 'Decline DB press', 4, 1, 120, 8, 12, false, false, 'compound', 35, 8, 'thu-press', null),
@@ -26,7 +26,7 @@ values
   ('thu-hammer-curl', 'hammer-curl', 'Hammer curl', 4, 4, 75, 8, 12, false, false, 'isolation', 20, 8, null, null),
   ('thu-lateral-raise', 'lateral-raise', 'Lateral raise', 4, 5, 75, 10, 15, false, false, 'isolation', 7.5, 10, null, null),
   ('thu-push-up', 'push-up', 'Feet-elevated push-up', 4, 6, 75, 8, 15, false, true, 'compound', 0, 8, null, null),
-  ('fri-pull-up', 'pull-up', 'Pull-up', 5, 1, 120, 8, 12, false, true, 'compound', 0, 8, null, null),
+  ('fri-pull-up', 'pull-up', 'Pull-up', 5, 1, 120, 5, 10, false, true, 'compound', 0, 5, null, null),
   ('fri-bent-over-row', 'bent-over-row', 'Two-arm bent-over row', 5, 2, 120, 8, 12, false, false, 'compound', 25, 8, null, null),
   ('fri-reverse-lunge', 'reverse-lunge', 'Reverse lunge', 5, 3, 90, 8, 12, true, false, 'unilateral', 20, 8, null, '/side'),
   ('fri-db-rdl', 'db-rdl', 'DB RDL', 5, 4, 90, 8, 12, false, false, 'compound', 30, 8, null, null),
@@ -52,8 +52,8 @@ on conflict (slug) do update set
 -- logged session are kept (the FK needs them) but parked outside the day grid
 -- so they never appear in a workout again.
 update public.exercises set slot_day = null, order_index = null
-where slug not in ('mon-incline-db-press', 'mon-flat-db-press', 'mon-db-pullover', 'mon-lateral-raise', 'mon-hanging-knee-raise', 'mon-anti-rotation-press', 'tue-pull-up', 'tue-single-arm-db-row', 'tue-chest-supported-db-row', 'tue-rear-delt-fly', 'tue-incline-db-curl', 'tue-dead-bug', 'wed-goblet-squat', 'wed-rfe-split-squat', 'wed-db-rdl', 'wed-nordic-curl', 'wed-db-hip-thrust', 'wed-single-leg-calf-raise', 'thu-press', 'thu-seated-db-oh-press', 'thu-overhead-db-extension', 'thu-hammer-curl', 'thu-lateral-raise', 'thu-push-up', 'fri-pull-up', 'fri-bent-over-row', 'fri-reverse-lunge', 'fri-db-rdl', 'fri-hanging-leg-raise', 'fri-seated-calf-raise');
+where slug not in ('mon-incline-db-press', 'mon-flat-db-press', 'mon-db-pullover', 'mon-lateral-raise', 'mon-hanging-knee-raise', 'mon-anti-rotation-press', 'tue-pull-up', 'tue-single-arm-db-row', 'tue-chest-supported-db-row', 'tue-rear-delt-fly', 'tue-incline-db-curl', 'tue-dead-bug', 'wed-goblet-squat', 'wed-rfe-split-squat', 'wed-db-rdl', 'wed-db-leg-curl', 'wed-db-hip-thrust', 'wed-single-leg-calf-raise', 'thu-press', 'thu-seated-db-oh-press', 'thu-overhead-db-extension', 'thu-hammer-curl', 'thu-lateral-raise', 'thu-push-up', 'fri-pull-up', 'fri-bent-over-row', 'fri-reverse-lunge', 'fri-db-rdl', 'fri-hanging-leg-raise', 'fri-seated-calf-raise');
 
 delete from public.exercises e
-where e.slug not in ('mon-incline-db-press', 'mon-flat-db-press', 'mon-db-pullover', 'mon-lateral-raise', 'mon-hanging-knee-raise', 'mon-anti-rotation-press', 'tue-pull-up', 'tue-single-arm-db-row', 'tue-chest-supported-db-row', 'tue-rear-delt-fly', 'tue-incline-db-curl', 'tue-dead-bug', 'wed-goblet-squat', 'wed-rfe-split-squat', 'wed-db-rdl', 'wed-nordic-curl', 'wed-db-hip-thrust', 'wed-single-leg-calf-raise', 'thu-press', 'thu-seated-db-oh-press', 'thu-overhead-db-extension', 'thu-hammer-curl', 'thu-lateral-raise', 'thu-push-up', 'fri-pull-up', 'fri-bent-over-row', 'fri-reverse-lunge', 'fri-db-rdl', 'fri-hanging-leg-raise', 'fri-seated-calf-raise')
+where e.slug not in ('mon-incline-db-press', 'mon-flat-db-press', 'mon-db-pullover', 'mon-lateral-raise', 'mon-hanging-knee-raise', 'mon-anti-rotation-press', 'tue-pull-up', 'tue-single-arm-db-row', 'tue-chest-supported-db-row', 'tue-rear-delt-fly', 'tue-incline-db-curl', 'tue-dead-bug', 'wed-goblet-squat', 'wed-rfe-split-squat', 'wed-db-rdl', 'wed-db-leg-curl', 'wed-db-hip-thrust', 'wed-single-leg-calf-raise', 'thu-press', 'thu-seated-db-oh-press', 'thu-overhead-db-extension', 'thu-hammer-curl', 'thu-lateral-raise', 'thu-push-up', 'fri-pull-up', 'fri-bent-over-row', 'fri-reverse-lunge', 'fri-db-rdl', 'fri-hanging-leg-raise', 'fri-seated-calf-raise')
   and not exists (select 1 from public.session_lifts l where l.exercise_id = e.id);

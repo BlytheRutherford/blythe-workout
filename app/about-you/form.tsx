@@ -61,7 +61,7 @@ export function AboutYouForm() {
             </option>
           ))}
         </Select>
-        <p className="faint mt-3">Sets your starting weights. You can change any lift for the first two weeks.</p>
+        <p className="faint mt-3">Sets your starting weights. You can change the weight on any set while you train.</p>
         {error && <p className="caption mt-2">{error}</p>}
         <Pill type="submit" className="mt-8" disabled={busy}>
           {busy ? "Saving…" : "Continue"}

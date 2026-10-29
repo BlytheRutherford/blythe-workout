@@ -1,22 +1,28 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
+/** The red sun and the name. */
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <div className={`title text-[15px] ${className}`}>BLYTHE WORKOUT</div>;
+  return (
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <span aria-hidden className="block w-[14px] h-[14px] rounded-full bg-ember shadow-[0_0_18px_rgba(244,44,29,0.7)]" />
+      <span className="title text-[22px]">Blythe Workout</span>
+    </div>
+  );
 }
 
-/** Full-width butter pill. RECORD, LOG SET, SIGN IN, START WORKOUT … */
-export function Pill({ children, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+/** The one loud button on a screen. `quiet` for the secondary choice. */
+export function Pill({ children, className = "", quiet = false, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { quiet?: boolean }) {
   return (
-    <button type="button" className={`pill ${className}`} {...rest}>
+    <button type="button" className={`pill ${quiet ? "pill-quiet" : ""} ${className}`} {...rest}>
       {children}
     </button>
   );
 }
 
-export function PillLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
+export function PillLink({ href, children, className = "", quiet = false }: { href: string; children: ReactNode; className?: string; quiet?: boolean }) {
   return (
-    <Link href={href} className={`pill ${className}`}>
+    <Link href={href} className={`pill ${quiet ? "pill-quiet" : ""} ${className}`}>
       {children}
     </Link>
   );
@@ -32,7 +38,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 
 /**
  * Renders a number string with every digit in an equal-width box so timers and
- * hero numbers don't jitter, even in a face without tabular figures (Fraunces).
+ * hero numbers don't jitter as they change. The × is drawn in ember.
  */
 export function Digits({ value, className = "" }: { value: string; className?: string }) {
   return (
@@ -45,10 +51,10 @@ export function Digits({ value, className = "" }: { value: string; className?: s
             </span>
           );
         }
-        const width = ch === " " ? "0.22em" : ch === ":" || ch === "." ? "0.3em" : ch === "×" ? "0.62em" : undefined;
+        const width = ch === " " ? "0.16em" : ch === ":" || ch === "." ? "0.24em" : ch === "×" ? "0.5em" : undefined;
         return (
-          <span key={i} className="digit-sep" style={{ width }}>
-            {ch === " " ? "\u00A0" : ch}
+          <span key={i} className={`digit-sep ${ch === "×" ? "hero-x" : ""}`} style={{ width }}>
+            {ch === " " ? " " : ch}
           </span>
         );
       })}
@@ -56,31 +62,47 @@ export function Digits({ value, className = "" }: { value: string; className?: s
   );
 }
 
-/** Standard screen frame: padded column, safe areas, black background. */
+/** Standard screen frame: padded column, safe areas. */
 export function Screen({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <main className={`flex-1 flex flex-col px-6 safe-top safe-bottom ${className}`}>{children}</main>;
 }
 
 export function Title({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <h1 className={`title text-[22px] ${className}`}>{children}</h1>;
+  return <h1 className={`title text-[40px] ${className}`}>{children}</h1>;
 }
 
-/** Bottom tab bar — Today · History · Settings. Never shown on live / countdown / recording / rest. */
+/** Bottom tab bar. Never shown on the live workout screen. */
 export function TabBar({ active }: { active: "today" | "week" | "history" | "settings" }) {
   const item = (href: string, label: string, key: typeof active) => (
     <Link
       href={href}
-      className={`flex-1 text-center py-3 text-[11px] tracking-[0.1em] uppercase ${active === key ? "text-text" : "text-text-faint"}`}
+      aria-current={active === key ? "page" : undefined}
+      className={`relative flex-1 text-center pt-3.5 pb-2 text-[13px] font-medium ${active === key ? "text-bone" : "text-bone-faint"}`}
     >
+      {active === key && <span aria-hidden className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full bg-ember" />}
       {label}
     </Link>
   );
   return (
-    <nav className="border-t hairline flex px-2 safe-bottom bg-bg">
+    <nav className="sticky bottom-0 border-t hairline flex px-2 safe-bottom bg-ink/90 backdrop-blur-md">
       {item("/today", "Today", "today")}
       {item("/week", "Week", "week")}
       {item("/history", "History", "history")}
       {item("/settings", "Settings", "settings")}
     </nav>
+  );
+}
+
+/** Five segments: this week's workouts against the target. */
+export function WeekProgress({ count, target, live = false }: { count: number; target: number; live?: boolean }) {
+  return (
+    <div className="flex gap-1.5" role="img" aria-label={`${Math.min(count, target)} of ${target} workouts this week`}>
+      {Array.from({ length: target }).map((_, i) => (
+        <span
+          key={i}
+          className={`week-seg ${i < count - (live ? 1 : 0) ? "week-seg-done" : live && i === count - 1 ? "week-seg-live" : ""}`}
+        />
+      ))}
+    </div>
   );
 }

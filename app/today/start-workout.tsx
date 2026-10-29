@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Pill } from "@/components/ui";
 
-export function StartWorkout() {
+export function StartWorkout({ label = "Start workout" }: { label?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function StartWorkout() {
     <div>
       {error && <p className="caption mb-3">{error}</p>}
       <Pill onClick={start} disabled={busy}>
-        {busy ? "Starting…" : "Start workout"}
+        {busy ? "Starting…" : label}
       </Pill>
     </div>
   );

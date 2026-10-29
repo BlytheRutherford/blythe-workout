@@ -48,25 +48,25 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
       <Screen>
         <Wordmark />
         <ResumeBar />
-        <div className="mt-10 mb-6 flex items-baseline justify-between">
+        <div className="mt-10 mb-6 flex items-center justify-between">
           <Title>
             {MONTHS[month - 1]} {year}
           </Title>
-          <div className="flex gap-5">
-            <Link href={`/history?y=${prev.y}&m=${prev.m}`} className="link">
+          <div className="flex gap-2">
+            <Link href={`/history?y=${prev.y}&m=${prev.m}`} aria-label="Previous month" className="stepper !w-11 !h-11 !text-[20px]">
               ‹
             </Link>
-            <Link href={`/history?y=${next.y}&m=${next.m}`} className="link">
+            <Link href={`/history?y=${next.y}&m=${next.m}`} aria-label="Next month" className="stepper !w-11 !h-11 !text-[20px]">
               ›
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-2 text-center faint mb-2">
+        <div className="grid grid-cols-7 gap-1.5 text-center faint mb-2">
           {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
             <div key={i}>{d}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1.5">
           {Array.from({ length: offset }).map((_, i) => (
             <div key={`o${i}`} />
           ))}
@@ -77,8 +77,8 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
             return (
               <div
                 key={ymd}
-                className={`grid-day flex items-center justify-center text-[12px] ${isDone ? "grid-day-done text-accent-ink" : isToday ? "grid-day-today text-text" : "text-text-faint"}`}
-                title={isDone ? `Day ${doneMap.get(ymd)}` : undefined}
+                className={`cal-day text-[14px] ${isDone ? "cal-day-done font-semibold" : isToday ? "cal-day-today" : ""}`}
+                title={isDone ? `Workout ${doneMap.get(ymd)}` : undefined}
               >
                 {i + 1}
               </div>
@@ -86,7 +86,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
           })}
         </div>
         <p className="caption mt-8">
-          {done.length} lift day{done.length === 1 ? "" : "s"} this month · {total ?? 0} total
+          {done.length} workout{done.length === 1 ? "" : "s"} this month, {total ?? 0} in all
         </p>
       </Screen>
       <TabBar active="history" />

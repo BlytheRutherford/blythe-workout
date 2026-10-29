@@ -1,7 +1,7 @@
 /* Blythe Workout service worker — small app-shell cache.
  * Network-first for pages and API, cache-first for built static assets.
  * Never caches Supabase or media requests. */
-const VERSION = "bw-v1";
+const VERSION = "bw-v2";
 const STATIC = `${VERSION}-static`;
 
 self.addEventListener("install", (event) => {

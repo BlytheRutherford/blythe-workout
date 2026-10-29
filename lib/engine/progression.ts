@@ -28,7 +28,13 @@ export interface ExerciseState {
   note: string | null;
 }
 
-export type LiftResult = "hit" | "miss";
+/**
+ * hit  = all three working sets done, none lighter than the weight the lift settled on.
+ * hold = all three done, but one set dropped below that weight (e.g. the last set
+ *        went lighter): repeat the same prescription. Not a failure, so no deload.
+ * miss = the lift was started but the lifter left before three LOG SETs.
+ */
+export type LiftResult = "hit" | "hold" | "miss";
 
 /** Bonus reps allowed past the range ceiling once load can no longer go up. */
 export const HARD_CAP_BONUS = 8;
@@ -39,6 +45,7 @@ export const NOTE_BODYWEIGHT = "Bodyweight. Adding reps.";
 export const NOTE_REP_CAP = "Rep cap. Slow the tempo.";
 export const NOTE_DELOAD = "Deloaded. Reps reset.";
 export const NOTE_HOLD = "Held. Same prescription once more.";
+export const NOTE_HOLD_SETS = "Held. Do all three sets at this weight to move up.";
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
@@ -72,13 +79,15 @@ export function hardCap(spec: ExerciseSpec): number {
 /**
  * Apply one lift result and return the next prescription.
  *
- * hit  = all three working sets logged at the shown prescription.
+ * hit  = all three working sets logged (at the weight settleLift chose).
+ * hold = all three logged, one lighter than that weight → same prescription.
  * miss = the lift was started but the lifter left before three LOG SETs.
  *
  * Rules (spec + evidence):
  *  - hit, reps < ceiling            → same weight, +1 rep
  *  - hit, reps at ceiling           → next legal load, reps → rangeMin
  *  - hit at 52.5 / bodyweight cap   → stay, +1 bonus rep (up to hardCap), note
+ *  - hold                           → identical prescription, misses untouched
  *  - miss                           → hold once (identical prescription)
  *  - second straight miss           → one legal increment down, reps → rangeMin
  *  - a prescription is therefore never issued a third time without
@@ -88,6 +97,17 @@ export function applyResult(state: ExerciseState, spec: ExerciseSpec, result: Li
   const variantIndex = state.variantIndex ?? 0;
   const weight = spec.isBodyweight ? 0 : snapToLegal(state.weight, "up");
   const reps = Math.max(spec.rangeMin, Math.round(state.targetReps));
+
+  if (result === "hold") {
+    return {
+      weight,
+      targetReps: reps,
+      consecutiveHits: 0,
+      consecutiveMisses: state.consecutiveMisses,
+      variantIndex,
+      note: NOTE_HOLD_SETS,
+    };
+  }
 
   if (result === "miss") {
     const misses = state.consecutiveMisses + 1;
@@ -159,6 +179,31 @@ export function applyResult(state: ExerciseState, spec: ExerciseSpec, result: Li
     variantIndex,
     note: spec.isBodyweight ? NOTE_BODYWEIGHT_CAP : NOTE_REP_CAP,
   };
+}
+
+/**
+ * The lifter can change the weight on any set. Which weight does the next
+ * workout build from?
+ *
+ * The lift settles on the median of the working-set weights (the lower middle
+ * for an even count) — the weight most of the work was done at:
+ *   40 · 35 · 35  → 35 (too heavy, dropped after set 1)
+ *   30 · 35 · 35  → 35 (too light, went up after set 1)
+ *   40 · 40 · 35  → 40 (only the last set went lighter)
+ *   30 · 30 · 35  → 30 (tried heavier on the last set only)
+ * It's a hit unless, after first reaching that weight, a later set went
+ * lighter (40 · 40 · 35): then the same prescription is held, the way double
+ * progression treats a set that fell short. Starting light and moving up is a
+ * hit. Unchanged weights are always a hit, so nothing changes for a lifter who
+ * never touches the weight. `setWeights` must be in set order.
+ */
+export function settleLift(setWeights: number[]): { weight: number; result: "hit" | "hold" } {
+  if (setWeights.length === 0) return { weight: 0, result: "hit" };
+  const sorted = [...setWeights].sort((a, b) => a - b);
+  const weight = sorted[Math.floor((sorted.length - 1) / 2)];
+  const reached = setWeights.findIndex((w) => w >= weight);
+  const droppedAfter = setWeights.slice(reached + 1).some((w) => w < weight);
+  return { weight, result: droppedAfter ? "hold" : "hit" };
 }
 
 export interface WarmupSet {

@@ -68,3 +68,14 @@ export function formatPrescription(weight: number, reps: number, repUnit?: strin
   const unit = !repUnit ? "reps" : repUnit.startsWith("/") ? `reps${repUnit}` : repUnit.trim();
   return `${load} × ${reps} ${unit}${sets ? ` × ${sets} sets` : ""}`;
 }
+
+/**
+ * Like formatPrescription, but for a lift whose weight changed between sets:
+ * "40, 35, 35 lb × 9 reps". Identical weights collapse to the plain form.
+ */
+export function formatSetWeights(weights: number[], reps: number, repUnit?: string | null, sets?: number): string {
+  const distinct = new Set(weights);
+  if (weights.length === 0 || distinct.size === 1) return formatPrescription(weights[0] ?? 0, reps, repUnit, sets);
+  const unit = !repUnit ? "reps" : repUnit.startsWith("/") ? `reps${repUnit}` : repUnit.trim();
+  return `${weights.map(formatLoad).join(", ")} lb × ${reps} ${unit}`;
+}

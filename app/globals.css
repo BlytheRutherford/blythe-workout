@@ -1,75 +1,103 @@
 @import "tailwindcss";
 
-/* Butter Black — the only palette. */
+/*
+ * Red sky — the palette from the pagoda poster:
+ * ink #070709 · umber #4B2D2E · rust #824334 · ember #F42C1D · crimson #AE1918 · oxblood #701C1A.
+ * Bone (#F3EAE6) is added for text: none of the six reads on black at body size.
+ */
 :root {
-  --bg: #0a0a0a;
-  --bg-elev: #121212;
-  --line: #2a2a28;
-  --text: #f3e5ab;
-  --text-dim: #9a958a;
-  --text-faint: #5e5b55;
-  --accent: #f3e5ab;
-  --accent-ink: #14120a;
-  --rec: #e23c3c;
+  --ink: #070709;
+  --umber: #4b2d2e;
+  --rust: #824334;
+  --ember: #f42c1d;
+  --crimson: #ae1918;
+  --oxblood: #701c1a;
+  --bone: #f3eae6;
+  --bone-dim: #c2aca8;
+  --bone-faint: #8e7672;
+  --surface: rgba(75, 45, 46, 0.22);
+  --line: rgba(130, 67, 52, 0.42);
   color-scheme: dark;
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-bg-elev: var(--bg-elev);
+  --color-ink: var(--ink);
+  --color-umber: var(--umber);
+  --color-rust: var(--rust);
+  --color-ember: var(--ember);
+  --color-crimson: var(--crimson);
+  --color-oxblood: var(--oxblood);
+  --color-bone: var(--bone);
+  --color-bone-dim: var(--bone-dim);
+  --color-bone-faint: var(--bone-faint);
+  --color-surface: var(--surface);
   --color-line: var(--line);
-  --color-text: var(--text);
-  --color-text-dim: var(--text-dim);
-  --color-text-faint: var(--text-faint);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-rec: var(--rec);
-  --font-sans: var(--font-plex), "IBM Plex Sans", system-ui, sans-serif;
-  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
-  --radius-pill: 999px;
+  --font-sans: var(--font-instrument), "Instrument Sans", system-ui, sans-serif;
+  --font-display: var(--font-shoulders), "Big Shoulders", "Arial Narrow", sans-serif;
 }
 
 html {
-  background: var(--bg);
+  background: var(--ink);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  position: relative;
+  background: var(--ink);
+  color: var(--bone);
   font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.45;
   font-variant-numeric: tabular-nums lining-nums;
   min-height: 100dvh;
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
 }
 
+/* The red sky: a low glow behind the top of every screen. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 62vh;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(90% 70% at 78% -12%, rgba(244, 44, 29, 0.2), transparent 62%),
+    radial-gradient(120% 80% at 20% -20%, rgba(112, 28, 26, 0.55), transparent 70%);
+}
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Safe areas for the notch / home indicator when installed. */
-.safe-top { padding-top: max(env(safe-area-inset-top), 16px); }
+.safe-top { padding-top: max(env(safe-area-inset-top), 18px); }
 .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
 
-/* Titles — always butter. */
+/* Display type: tall and condensed, for headings and every number that matters. */
 .title {
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variation-settings: "opsz" 72;
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  color: var(--bone);
 }
 
-/* Giant numbers. Fraunces has no tnum; <Digits> boxes each glyph instead. */
 .hero {
   font-family: var(--font-display);
-  font-weight: 400;
-  font-variation-settings: "opsz" 144, "SOFT" 60, "WONK" 0;
-  color: var(--text);
-  line-height: 0.95;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  font-variation-settings: "opsz" 72;
+  color: var(--bone);
+  line-height: 0.86;
+  letter-spacing: -0.01em;
 }
+.hero-x { color: var(--ember); }
 .digit {
   display: inline-block;
-  width: 0.62em;
+  width: 0.5em;
   text-align: center;
 }
 .digit-sep {
@@ -77,54 +105,74 @@ body {
   text-align: center;
 }
 
-/* Pills — the only button style. */
+/* Buttons. One loud one per screen. */
 .pill {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   width: 100%;
-  height: 56px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--accent-ink);
+  height: 60px;
+  border-radius: 18px;
+  background: var(--ember);
+  color: var(--ink);
   font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 650;
+  font-size: 18px;
+  letter-spacing: 0.005em;
   border: 0;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  box-shadow: 0 14px 34px -16px rgba(244, 44, 29, 0.85);
+  transition: background-color 120ms ease, transform 120ms ease;
 }
 .pill:disabled {
   opacity: 0.45;
   cursor: default;
+  box-shadow: none;
 }
 .pill:active:not(:disabled) {
-  opacity: 0.85;
+  background: var(--crimson);
+  transform: scale(0.985);
 }
+.pill-quiet {
+  background: transparent;
+  color: var(--bone);
+  border: 1px solid var(--umber);
+  box-shadow: none;
+}
+.pill-quiet:active:not(:disabled) { background: var(--surface); }
 
-/* Hairline rules. */
+/* Rows and rules */
 .hairline { border-color: var(--line); }
 .hairline-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--line);
 }
+
+/* A raised block: lists of lifts, settings groups. */
+.panel {
+  background: var(--surface);
+  border: 1px solid rgba(75, 45, 46, 0.7);
+  border-radius: 22px;
+  padding: 4px 18px;
+}
+.panel > :last-child { border-bottom: 0; }
 
 /* Fields */
 .field {
   display: block;
   width: 100%;
   background: transparent;
-  color: var(--text);
+  color: var(--bone);
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--umber);
   padding: 14px 0;
   font-size: 17px;
   outline: none;
@@ -132,19 +180,18 @@ body {
   -webkit-appearance: none;
   appearance: none;
 }
-.field::placeholder { color: var(--text-faint); }
-.field:focus { border-bottom-color: var(--text-dim); }
-select.field {
-  background-image: none;
-}
-select.field option { background: var(--bg-elev); color: var(--text); }
+.field::placeholder { color: var(--bone-faint); }
+.field:focus { border-bottom-color: var(--ember); }
+select.field { background-image: none; }
+select.field option { background: #140c0d; color: var(--bone); }
 
-.caption { color: var(--text-dim); font-size: 14px; }
-.faint { color: var(--text-faint); font-size: 13px; }
+.caption { color: var(--bone-dim); font-size: 15px; }
+.faint { color: var(--bone-faint); font-size: 13px; }
 .link {
-  color: var(--text-dim);
+  color: var(--bone-dim);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-color: var(--rust);
+  text-underline-offset: 4px;
   background: none;
   border: 0;
   padding: 0;
@@ -152,39 +199,63 @@ select.field option { background: var(--bg-elev); color: var(--text); }
   cursor: pointer;
 }
 
-/* Set pips */
-.pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  border: 1px solid var(--text-dim);
+/* Set progress: one bar per working set */
+.setbar {
+  height: 6px;
+  flex: 1;
+  border-radius: 3px;
+  background: var(--umber);
 }
-.pip-done { background: var(--accent); border-color: var(--accent); }
-.pip-current { border-color: var(--accent); }
+.setbar-done { background: var(--ember); }
+.setbar-current { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ember); }
 
-/* Recording dot */
-@keyframes rec-blink {
-  0%, 60% { opacity: 1; }
-  61%, 100% { opacity: 0.25; }
-}
-.rec-dot {
-  width: 10px;
-  height: 10px;
+/* Weight stepper on the live screen */
+.stepper {
+  width: 52px;
+  height: 52px;
   border-radius: 999px;
-  background: var(--rec);
-  animation: rec-blink 1.2s steps(1) infinite;
+  border: 1px solid var(--umber);
+  background: var(--surface);
+  color: var(--bone);
+  font-size: 26px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
 }
+.stepper:active:not(:disabled) { background: var(--oxblood); border-color: var(--oxblood); }
+.stepper:disabled { opacity: 0.3; }
 
-/* History grid */
-.grid-day {
+/* Week strip and history calendar */
+.cal-day {
   aspect-ratio: 1;
-  border: 1px solid var(--line);
+  border-radius: 12px;
+  border: 1px solid rgba(75, 45, 46, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--bone-faint);
 }
-.grid-day-done { background: var(--accent); border-color: var(--accent); }
-.grid-day-today { border-color: var(--text-dim); }
+.cal-day-done { background: var(--ember); border-color: var(--ember); color: var(--ink); }
+.cal-day-live { background: var(--oxblood); border-color: var(--crimson); color: var(--bone); }
+.cal-day-today { border-color: var(--bone-dim); color: var(--bone); }
 
-/* Kill focus rings in the yellow-on-black world; keyboard users still get outline via :focus-visible */
+/* Weekly progress: five segments */
+.week-seg {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--umber);
+}
+.week-seg-done { background: var(--ember); }
+.week-seg-live { background: var(--crimson); }
+
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 1px solid var(--text-dim);
+  outline: 2px solid var(--ember);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }

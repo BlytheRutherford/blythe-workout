@@ -34,8 +34,9 @@ export function WalkNote({ sessionId, done: initial }: { sessionId: string | nul
   }
 
   return (
-    <button type="button" onClick={toggle} className="faint text-left mt-4 py-2">
-      {done ? "Walk already done." : "2-mile walk · outside the app · tap when done"}
+    <button type="button" onClick={toggle} className="faint text-left mt-2 py-2 flex items-center gap-2">
+      <span aria-hidden className={`inline-block w-3 h-3 rounded-full border ${done ? "bg-ember border-ember" : "border-rust"}`} />
+      {done ? "2-mile walk done" : "2-mile walk. Tap when done."}
     </button>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-/** Keeps the screen on during live / countdown / recording / rest. Best-effort. */
+/** Keeps the screen on during a workout (sets and rest timers). Best-effort. */
 let sentinel: WakeLockSentinel | null = null;
 
 export async function acquireWakeLock() {

@@ -1,5 +1,4 @@
 export type SessionStatus = "in_progress" | "complete" | "abandoned";
-export type EmailStatus = "pending" | "stitching" | "sent" | "failed";
 export type LiftStatus = "pending" | "in_progress" | "completed" | "missed";
 export type SetKind = "warmup" | "work";
 export type SetResult = "pending" | "completed" | "missed";
@@ -7,16 +6,13 @@ export type SetResult = "pending" | "completed" | "missed";
 export interface ProfileRow {
   id: string;
   email: string;
-  delivery_email: string | null;
   role: "user" | "admin";
   height_cm: number | null;
   weight_lb: number | null;
   activity_level: "sedentary" | "lightly_active" | "moderately_active" | "returning_lifter" | "trained" | null;
-  calibration_ends_on: string;
   onboarded_at: string | null;
-  burn_overlay: boolean;
-  records_video: boolean;
-  record_audio: boolean;
+  /** Workouts before this date don't count toward the rotation or the week (set when lifts are reset). */
+  program_start_on: string | null;
   created_at: string;
 }
 
@@ -38,19 +34,13 @@ export interface SessionRow {
   id: string;
   user_id: string;
   session_date: string;
+  /** Position in the rotation, 1–5 (Day 1 … Day 5). */
   day_index: number;
   day_number: number | null;
   status: SessionStatus;
   started_at: string;
   completed_at: string | null;
   walk_done: boolean;
-  email_status: EmailStatus;
-  email_to: string | null;
-  email_error: string | null;
-  email_sent_at: string | null;
-  video_path: string | null;
-  video_bytes: number | null;
-  video_kind: string | null;
 }
 
 export interface LiftRow {
@@ -70,14 +60,6 @@ export interface LiftRow {
   progression_applied: boolean;
   started_at: string | null;
   finished_at: string | null;
-  video_path: string | null;
-  video_bytes: number | null;
-  video_kind: string | null;
-  email_status: EmailStatus;
-  email_to: string | null;
-  email_error: string | null;
-  email_sent_at: string | null;
-  email_subject: string | null;
 }
 
 export interface SetRow {
@@ -93,23 +75,7 @@ export interface SetRow {
   actual_reps: number | null;
   result: SetResult;
   logged_at: string | null;
-  has_clip: boolean;
   rest_skipped: boolean;
-}
-
-export interface ClipRow {
-  id: string;
-  session_id: string;
-  lift_id: string;
-  user_id: string;
-  exercise_key: string;
-  set_number: number;
-  storage_path: string;
-  mime: string;
-  bytes: number | null;
-  duration_ms: number | null;
-  trimmed_ms: number;
-  created_at: string;
 }
 
 export interface ExerciseRow {

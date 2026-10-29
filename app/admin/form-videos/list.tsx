@@ -65,7 +65,7 @@ export function FormVideoList({ lifts: initial }: { lifts: Lift[] }) {
         {lifts.map((l) => (
           <li key={l.key} className="hairline-row">
             <div>
-              <div className="text-text">{l.name}</div>
+              <div className="text-bone">{l.name}</div>
               <div className="faint">{l.current ? `${(l.current.bytes ?? 0) / 1e6 > 0 ? ((l.current.bytes ?? 0) / 1e6).toFixed(1) + " MB · " : ""}${new Date(l.current.updatedAt).toLocaleDateString()}` : "none"}</div>
             </div>
             <button type="button" className="link whitespace-nowrap" onClick={() => pick(l.key)} disabled={busyKey !== null}>

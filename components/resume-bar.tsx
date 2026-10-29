@@ -23,9 +23,9 @@ export async function ResumeBar() {
     .maybeSingle();
   if (!data) return null;
   return (
-    <Link href={`/workout/${data.id}`} className="flex items-center justify-between border-b hairline py-3 mt-4">
-      <span className="caption">Workout in progress</span>
-      <span className="title text-[12px]">Resume ›</span>
+    <Link href={`/workout/${data.id}`} className="flex items-center justify-between rounded-2xl bg-oxblood/70 border border-crimson px-4 py-3 mt-5">
+      <span className="text-bone">Workout in progress</span>
+      <span className="text-bone font-semibold">Resume</span>
     </Link>
   );
 }

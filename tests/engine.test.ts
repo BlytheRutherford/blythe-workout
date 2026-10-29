@@ -13,6 +13,10 @@ import {
   exercisesForDay,
   formatLoad,
   HARD_CAP_BONUS,
+  nextDayInRotation,
+  NOTE_HOLD_SETS,
+  RETIRED_VARIANTS,
+  settleLift,
   isLegal,
   LEGAL_LOADS,
   liftResultFromSets,
@@ -29,7 +33,7 @@ import {
 } from "../lib/engine";
 
 const spec: ExerciseSpec = { key: "incline-db-press", rangeMin: 8, rangeMax: 12, isBodyweight: false };
-const bw: ExerciseSpec = { key: "pull-up", rangeMin: 8, rangeMax: 12, isBodyweight: true };
+const bw: ExerciseSpec = { key: "pull-up", rangeMin: 5, rangeMax: 10, isBodyweight: true };
 
 const st = (weight: number, targetReps: number, extra: Partial<ExerciseState> = {}): ExerciseState => ({
   weight,
@@ -104,8 +108,8 @@ describe("double progression", () => {
     expect(graduated.weight).toBe(variantFor("incline-db-press", 1).startWeight);
   });
   it("bodyweight lifts progress by reps only", () => {
-    expect(applyResult(st(0, 8), bw, "hit")).toMatchObject({ weight: 0, targetReps: 9 });
-    expect(applyResult(st(0, 12), bw, "hit")).toMatchObject({ weight: 0, targetReps: 13 });
+    expect(applyResult(st(0, 5), bw, "hit")).toMatchObject({ weight: 0, targetReps: 6 });
+    expect(applyResult(st(0, 10), bw, "hit")).toMatchObject({ weight: 0, targetReps: 11 });
   });
 });
 
@@ -177,6 +181,7 @@ describe("warm-up", () => {
     ]);
     expect(warmupSets(5, 8, spec)).toEqual([{ weight: 5, reps: 5 }]);
     expect(warmupSets(0, 8, bw)).toEqual([{ weight: 0, reps: 4 }]);
+    expect(warmupSets(0, 5, bw)).toEqual([{ weight: 0, reps: 3 }]);
   });
 });
 
@@ -230,7 +235,7 @@ describe("program", () => {
         if (v.isBodyweight) expect(v.startWeight).toBe(0);
         else expect(isLegal(v.startWeight)).toBe(true);
         expect(v.rangeMin).toBeLessThanOrEqual(v.rangeMax);
-        expect(v.emailName.length).toBeGreaterThan(0);
+        expect(v.name.length).toBeGreaterThan(0);
       }
       expect(ladderLength(key)).toBe(ladder.length);
     }
@@ -288,5 +293,50 @@ describe("graduating past the 52.5 lb ceiling", () => {
     }
     expect(s.variantIndex).toBe(ladderLength(key) - 1);
     expect(new Set(seen).size).toBeGreaterThan(50);
+  });
+});
+
+describe("changing the weight mid-lift", () => {
+  it("settles on the weight most of the sets were done at", () => {
+    expect(settleLift([40, 40, 40])).toEqual({ weight: 40, result: "hit" });
+    expect(settleLift([40, 35, 35])).toEqual({ weight: 35, result: "hit" }); // too heavy, dropped after set 1
+    expect(settleLift([30, 35, 35])).toEqual({ weight: 35, result: "hit" }); // too light, went up after set 1
+    expect(settleLift([40, 40, 35])).toEqual({ weight: 40, result: "hold" }); // last set went lighter
+    expect(settleLift([30, 30, 35])).toEqual({ weight: 30, result: "hit" }); // tried heavier on the last set
+    expect(settleLift([40, 35, 30])).toEqual({ weight: 35, result: "hold" });
+    expect(settleLift([35, 30, 35])).toEqual({ weight: 35, result: "hold" }); // dipped in the middle
+  });
+  it("builds the next workout from the settled weight", () => {
+    // 40 × 9 prescribed, dropped to 35 after the first set → next time 35 × 10
+    const { weight, result } = settleLift([40, 35, 35]);
+    expect(applyResult(st(weight, 9), spec, result)).toMatchObject({ weight: 35, targetReps: 10 });
+    // 30 × 10 prescribed, raised to 35 → next time 35 × 11
+    const up = settleLift([30, 35, 35]);
+    expect(applyResult(st(up.weight, 10), spec, up.result)).toMatchObject({ weight: 35, targetReps: 11 });
+  });
+  it("holds the same prescription without counting a miss", () => {
+    const next = applyResult(st(40, 9, { consecutiveMisses: 1 }), spec, "hold");
+    expect(next).toMatchObject({ weight: 40, targetReps: 9, consecutiveMisses: 1, note: NOTE_HOLD_SETS });
+  });
+});
+
+describe("rotation", () => {
+  it("runs Day 1 → Day 5 and wraps, whatever the weekday", () => {
+    expect(nextDayInRotation(null)).toBe(1);
+    expect(nextDayInRotation(1)).toBe(2);
+    expect(nextDayInRotation(4)).toBe(5);
+    expect(nextDayInRotation(5)).toBe(1);
+  });
+});
+
+describe("program changes", () => {
+  it("starts every pull-up variation at 5 reps", () => {
+    for (const v of VARIANTS["pull-up"]) expect(v.rangeMin).toBe(5);
+    expect(startingState(exerciseByKey("pull-up")!, "trained").targetReps).toBe(5);
+  });
+  it("replaces the Nordic curl with a dumbbell leg curl, keeping old history readable", () => {
+    expect(EXERCISE_KEYS).not.toContain("nordic-curl");
+    expect(exercisesForDay(3).map((e) => e.key)).toContain("db-leg-curl");
+    expect(variantFor("nordic-curl", 0).name).toBe(RETIRED_VARIANTS["nordic-curl"][0].name);
   });
 });

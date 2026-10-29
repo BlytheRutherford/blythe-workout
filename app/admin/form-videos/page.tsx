@@ -7,7 +7,7 @@ import { FormVideoList } from "./list";
 
 export const dynamic = "force-dynamic";
 
-/** ADMIN_EMAIL only. One official clip per lift. Daily Day-N clips never appear here. */
+/** ADMIN_EMAIL only. One form clip per lift, shown as a link on the live screen. */
 export default async function FormVideosPage() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
@@ -19,7 +19,7 @@ export default async function FormVideosPage() {
   const seen = new Set<string>();
   const lifts = EXERCISES.filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true))).map((e) => ({
     key: e.key,
-    name: e.variantRule === "thu-press" ? "Decline / flat DB press (Thu)" : e.name,
+    name: e.variantRule === "thu-press" ? "Decline / flat DB press (Day 4)" : e.name,
     current: byKey.get(e.key) ? { updatedAt: byKey.get(e.key)!.updated_at as string, bytes: byKey.get(e.key)!.bytes as number | null } : null,
   }));
 
@@ -28,8 +28,8 @@ export default async function FormVideosPage() {
       <Screen>
         <Wordmark />
         <Title className="mt-10 mb-1">Form videos</Title>
-        <p className="caption mb-4">One official clip per lift. Shown as a text link on the live screen.</p>
-        <FormVideoList lifts={lifts} />
+        <p className="caption mb-4">One clip per exercise. It shows as a &ldquo;Watch form video&rdquo; link while you do that lift.</p>
+        <div className="panel"><FormVideoList lifts={lifts} /></div>
       </Screen>
       <TabBar active="settings" />
     </>

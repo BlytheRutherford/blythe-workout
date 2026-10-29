@@ -1,25 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Sans } from "next/font/google";
+import { Big_Shoulders, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/register-sw";
 
-const plex = IBM_Plex_Sans({
+const instrument = Instrument_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex",
+  variable: "--font-instrument",
   display: "swap",
 });
 
-const fraunces = Fraunces({
+const shoulders = Big_Shoulders({
   subsets: ["latin"],
-  axes: ["opsz", "SOFT", "WONK"],
-  variable: "--font-fraunces",
+  axes: ["opsz"],
+  variable: "--font-shoulders",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Blythe Workout",
-  description: "Five lifts a day. Same program, your weights.",
+  description: "Five workouts a week. Same program, your weights.",
   applicationName: "Blythe Workout",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -35,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0A0A",
+  themeColor: "#070709",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -44,8 +43,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${plex.variable} ${fraunces.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-bg text-text">
+    <html lang="en" className={`${instrument.variable} ${shoulders.variable} h-full`}>
+      <body className="min-h-full flex flex-col bg-ink text-bone">
         {children}
         <RegisterSW />
       </body>

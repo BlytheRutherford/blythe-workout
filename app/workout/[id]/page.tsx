@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DAYS } from "@/lib/engine";
-import { DEFAULT_TZ, isValidTz, localDay } from "@/lib/session/dates";
-import { getProfile, getSessionById } from "@/lib/session/service";
+import { getSessionById } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { Workout } from "./workout";
 
@@ -13,30 +11,11 @@ export default async function WorkoutPage({ params }: PageProps<"/workout/[id]">
   const user = await currentUser();
   if (!user) redirect("/sign-in");
   const db = await createClient();
-  const [bundle, profile] = await Promise.all([getSessionById(db, user.id, id), getProfile(db, user.id)]);
-  if (!bundle || !profile) redirect("/today");
+  const bundle = await getSessionById(db, user.id, id);
+  if (!bundle) redirect("/today");
   if (bundle.session.status === "complete") redirect(`/workout/${id}/complete`);
   if (bundle.session.status === "abandoned") redirect("/today");
+  const day = DAYS[bundle.session.day_index - 1];
 
-  const cookieStore = await cookies();
-  const tzCookie = cookieStore.get("tz")?.value ?? null;
-  const tz = isValidTz(tzCookie) ? tzCookie : DEFAULT_TZ;
-  const today = localDay(tz);
-
-  const { count } = await db.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "complete");
-  const dayNumber = bundle.session.day_number ?? (count ?? 0) + 1;
-
-  return (
-    <Workout
-      bundle={bundle}
-      userId={user.id}
-      dayShort={DAYS[bundle.session.day_index - 1].short}
-      dayNumber={dayNumber}
-      calibrating={today.ymd <= profile.calibration_ends_on}
-      burnOverlay={profile.burn_overlay}
-      recordsVideo={profile.records_video}
-      recordAudio={profile.record_audio}
-      tz={tz}
-    />
-  );
+  return <Workout bundle={bundle} dayLabel={day.label} dayName={day.name} />;
 }
