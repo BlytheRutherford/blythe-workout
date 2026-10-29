@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Digits, Pill } from "@/components/ui";
-import { formatLoad, nextLegal, prevLegal, MAX_LOAD, MIN_LOAD } from "@/lib/engine";
+import { formatLoad, nextLegal, prevLegal, MAX_LOAD, MIN_LOAD, type WarmupMove } from "@/lib/engine";
 import type { SessionBundle, SetRow } from "@/lib/session/types";
 import { acquireWakeLock, releaseWakeLock } from "@/lib/wakelock";
 
@@ -21,6 +21,8 @@ interface Props {
   bundle: SessionBundle;
   dayLabel: string;
   dayName: string;
+  /** The movement warm-up done before the first lift. */
+  warmup: WarmupMove[];
 }
 
 const WARMUP_REST = 45;
@@ -44,6 +46,26 @@ function mmss(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/**
+ * Hero font size that keeps "BW × 11" or "52.5 × 12" on one line on a phone:
+ * estimate the string's width in em (Big Shoulders is condensed) and fit it to
+ * the screen, never larger than `max`.
+ */
+function fitHero(value: string, max = 124): string {
+  let em = 0;
+  for (const ch of value) {
+    if (/\d/.test(ch) || ch === "×") em += 0.5;
+    else if (ch === " ") em += 0.16;
+    else if (ch === ":" || ch === "." || ch === ",") em += 0.24;
+    else if (ch === "W" || ch === "M") em += 0.72;
+    else if (/[A-Z]/.test(ch)) em += 0.52;
+    else em += 0.46;
+  }
+  return `min(${max}px, calc((100vw - 48px) / ${Math.max(em, 1).toFixed(2)}))`;
+}
+
+const warmupKey = (sessionId: string) => `warmup-done-${sessionId}`;
 
 function repsLabel(reps: number, unit: string | null) {
   if (!unit) return `${reps} reps`;
@@ -79,13 +101,18 @@ function RestRing({ remaining, total }: { remaining: number; total: number }) {
   );
 }
 
-export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
+export function Workout({ bundle: initial, dayLabel, dayName, warmup }: Props) {
   const router = useRouter();
   const [bundle, setBundle] = useState<SessionBundle>(initial);
   const [phase, setPhase] = useState<Phase>({ kind: "live" });
   const [now, setNow] = useState(() => Date.now());
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The movement warm-up runs only before anything has been logged today.
+  const [moveIdx, setMoveIdx] = useState<number | null>(() =>
+    warmup.length > 0 && initial.lifts.every((l) => l.sets.every((x) => x.result === "pending")) ? 0 : null,
+  );
+  const [moveTimer, setMoveTimer] = useState<{ endsAt: number; total: number } | null>(null);
 
   const phaseRef = useRef<Phase>({ kind: "live" });
   const adjustTimer = useRef<number | null>(null);
@@ -113,6 +140,46 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  // Already warmed up for this workout (e.g. the app was reopened): go straight to the lifts.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(warmupKey(session.id)) === "1") setTimeout(() => setMoveIdx(null), 0);
+    } catch {}
+  }, [session.id]);
+
+  function finishWarmup() {
+    try {
+      localStorage.setItem(warmupKey(session.id), "1");
+    } catch {}
+    setMoveTimer(null);
+    setMoveIdx(null);
+  }
+
+  function nextMove() {
+    setMoveTimer(null);
+    if (moveIdx === null) return;
+    if (moveIdx + 1 >= warmup.length) finishWarmup();
+    else setMoveIdx(moveIdx + 1);
+  }
+
+  function startMoveTimer(seconds: number) {
+    const t = clock();
+    setNow(t);
+    setMoveTimer({ endsAt: t + seconds * 1000, total: seconds * 1000 });
+  }
+
+  // ---- timed warm-up move: count down, then move on
+  useEffect(() => {
+    if (!moveTimer) return;
+    const id = window.setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= moveTimer.endsAt) nextMove();
+    }, 250);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moveTimer]);
 
   // ---- rest ticker + auto-advance at 0:00
   useEffect(() => {
@@ -211,7 +278,7 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
     }
 
     const restSeconds = s.kind === "warmup" ? WARMUP_REST : liftCompleted ? BETWEEN_LIFTS_REST : l.rest_seconds;
-    const logged = s.kind === "warmup" ? "Warm-up logged" : liftCompleted ? `${l.display_name} done` : `Set ${s.set_number} logged`;
+    const logged = s.kind === "warmup" ? "Ramp-up set logged" : liftCompleted ? `${l.display_name} done` : `Set ${s.set_number} logged`;
     let next: string;
     if (liftCompleted && nextLift) {
       const ns = pending(nextLift);
@@ -220,7 +287,7 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
       const ns = pending(nextBundle.lifts.find((x) => x.id === l.id)!);
       next = ns
         ? ns.kind === "warmup"
-          ? `Next: warm-up, ${formatLoad(ns.prescribed_weight)} × ${ns.prescribed_reps}`
+          ? `Next: ramp-up set, ${formatLoad(ns.prescribed_weight)} × ${ns.prescribed_reps}`
           : `Next: set ${ns.set_number} of 3, ${formatLoad(ns.prescribed_weight)} × ${ns.prescribed_reps}`
         : "";
     }
@@ -293,8 +360,61 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
 
   return (
     <div className="fixed inset-0 text-bone overflow-hidden">
+      {/* ---------------- MOVEMENT WARM-UP */}
+      {phase.kind === "live" && moveIdx !== null && warmup[moveIdx] && lift && set && (
+        <main className="absolute inset-0 flex flex-col px-6 safe-top safe-bottom overflow-y-auto">
+          <div className="flex items-center justify-between">
+            <span className="w-6" />
+            <div className="flex items-baseline gap-2">
+              <span className="title text-[20px] text-ember">{dayLabel}</span>
+              <span className="caption">Warm-up</span>
+            </div>
+            <span className="caption tabular-nums">
+              {moveIdx + 1}/{warmup.length}
+            </span>
+          </div>
+
+          <div className="flex gap-1.5 mt-5" aria-hidden>
+            {warmup.map((_, i) => (
+              <span key={i} className={`setbar ${i < moveIdx ? "setbar-done" : i === moveIdx ? "setbar-current" : ""}`} />
+            ))}
+          </div>
+
+          <h1 className="title text-[44px] mt-8">{warmup[moveIdx].name}</h1>
+          <p className="caption mt-3 max-w-[34ch]">{warmup[moveIdx].cue}</p>
+
+          <div className="flex-1 flex flex-col items-center justify-center py-6">
+            {warmup[moveIdx].seconds ? (
+              moveTimer ? (
+                <RestRing remaining={moveTimer.endsAt - now} total={moveTimer.total} />
+              ) : (
+                <div className="hero" style={{ fontSize: fitHero(mmss(warmup[moveIdx].seconds! * 1000), 112) }}>
+                  <Digits value={mmss(warmup[moveIdx].seconds! * 1000)} />
+                </div>
+              )
+            ) : (
+              <div className="hero text-center" style={{ fontSize: fitHero(warmup[moveIdx].dose ?? "", 96) }}>
+                {warmup[moveIdx].dose}
+              </div>
+            )}
+          </div>
+
+          <p className="faint text-center mb-4">
+            {moveIdx + 1 < warmup.length ? `Next: ${warmup[moveIdx + 1].name.toLowerCase()}` : `Then: ${lift.display_name.toLowerCase()} ramp-up sets`}
+          </p>
+          {warmup[moveIdx].seconds && !moveTimer ? (
+            <Pill onClick={() => startMoveTimer(warmup[moveIdx].seconds!)}>Start {mmss(warmup[moveIdx].seconds! * 1000)}</Pill>
+          ) : (
+            <Pill onClick={nextMove}>{moveTimer ? "Done early" : "Done"}</Pill>
+          )}
+          <button type="button" className="link faint self-center mt-4" onClick={finishWarmup}>
+            Skip warm-up
+          </button>
+        </main>
+      )}
+
       {/* ---------------- LIVE */}
-      {(phase.kind === "live" || phase.kind === "saving") && lift && set && (
+      {(phase.kind === "live" || phase.kind === "saving") && moveIdx === null && lift && set && (
         <main className="absolute inset-0 flex flex-col px-6 safe-top safe-bottom overflow-y-auto">
           <div className="flex items-center justify-between">
             <button type="button" aria-label="Workout menu" aria-expanded={menuOpen} className="text-bone-dim py-2 pr-4 -ml-1 text-[26px] leading-none" onClick={() => setMenuOpen((v) => !v)}>
@@ -340,8 +460,8 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
           )}
 
           <div className="flex-1 flex flex-col justify-center py-6">
-            <div className="caption mb-3">{set.kind === "warmup" ? `Warm-up ${set.set_number} of ${warmups.length}` : `Set ${set.set_number} of ${workSets.length}`}</div>
-            <div className="hero text-[124px]">
+            <div className="caption mb-3">{set.kind === "warmup" ? `Ramp-up set ${set.set_number} of ${warmups.length}, lighter than your working sets` : `Set ${set.set_number} of ${workSets.length}`}</div>
+            <div className="hero" style={{ fontSize: fitHero(`${formatLoad(set.prescribed_weight)} × ${set.prescribed_reps}`) }}>
               <Digits value={`${formatLoad(set.prescribed_weight)} × ${set.prescribed_reps}`} />
             </div>
             <div className="caption mt-2">
@@ -387,7 +507,7 @@ export function Workout({ bundle: initial, dayLabel, dayName }: Props) {
           </div>
 
           <Pill onClick={logSet} disabled={phase.kind === "saving" || busy}>
-            {phase.kind === "saving" ? "Saving…" : set.kind === "warmup" ? "Warm-up done" : "Log set"}
+            {phase.kind === "saving" ? "Saving…" : set.kind === "warmup" ? "Ramp-up set done" : "Log set"}
           </Pill>
         </main>
       )}

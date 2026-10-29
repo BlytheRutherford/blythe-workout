@@ -1,21 +1,27 @@
 # Blythe Workout
 
-iPhone-first PWA at **https://blytheworkout.com**. Six dumbbell lifts per workout, five workouts in a fixed rotation (Day 1 → Day 5, then back to Day 1), aiming for five in each Monday–Sunday week. The same program for everyone; only starting weights differ.
+A strength-training app I built for my home gym: Bowflex adjustable dumbbells, an incline bench and a pull-up bar. It's live at **[blytheworkout.com](https://blytheworkout.com)**, and I use it on my phone, installed to the home screen.
 
-Stack: Next.js 16 (App Router, TypeScript, Tailwind v4), Supabase (auth + Postgres + Storage for form videos), Vercel (hosting, deploys automatically from `main` on GitHub). Red-sky design: ink `#070709`, umber `#4B2D2E`, rust `#824334`, ember `#F42C1D`, crimson `#AE1918`, oxblood `#701C1A`, plus bone `#F3EAE6` for text. Big Shoulders for headings and numbers, Instrument Sans for everything else.
+## What it does
 
-## Where things live
+- **Runs a five-workout program.** Six lifts per workout, three sets each. The workouts aren't tied to weekdays: the next one is always the one after the last one I did, and the goal is five per week, Monday to Sunday.
+- **Does the progressive overload for me.** Each lift uses double progression: add a rep each time every set is completed, and once the top of the rep range is reached, move up to the next weight the dumbbells actually allow (5–52.5 lb, skipping 27.5 and 32.5). Misses hold the weight once, then drop it a step.
+- **Lets me change the weight on any set.** If the first set is too heavy, I drop it for the rest of the lift, and the next workout builds from the weight I actually used.
+- **Keeps going past the heaviest dumbbell.** At 52.5 lb a lift adds reps, then graduates to a harder version of the movement (single-arm, deficit, slower) so progress doesn't stop.
+- **Handles the session.** A guided warm-up for each workout, ramp-up sets, rest timers sized to each lift, a form video per exercise, a weekly view and a calendar history.
 
-| Thing | Where |
-|---|---|
-| Production | Vercel project `blythe-workout`, connected to GitHub `BlytheRutherford/blythe-workout` — every push to `main` deploys. Domains `blytheworkout.com` + `www` (308 → apex) |
-| Database / auth / storage | Supabase project `blythe-workout` (us-east-1, Free plan) |
-| Program definition | `lib/engine/program.ts` (single source of truth; `npm run gen:seed` writes `supabase/seed.sql`) |
-| Progression engine | `lib/engine/progression.ts`, tests in `tests/engine.test.ts` (`npm test`) |
+## How it's built
+
+- **Next.js 16** (App Router, TypeScript, Tailwind CSS v4), set up as an installable web app for iPhone.
+- **Supabase** for accounts, the Postgres database and file storage, with row-level security so each account only sees its own data.
+- **Vercel** for hosting. Every push to `main` deploys.
+- The progression rules are a small, pure TypeScript engine (`lib/engine/`) with unit tests (`npm test`). The program itself lives in one file, `lib/engine/program.ts`, which also generates the database seed.
+
+Built with help from an AI coding assistant; the app, the training program and the design decisions are mine.
 
 ## Environment
 
-Set in Vercel (Production + Preview) and `.env.local` for development:
+Set in Vercel and in `.env.local` for development:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=
@@ -44,7 +50,7 @@ Database: apply `supabase/migrations/*.sql` in order, then `supabase/seed.sql` (
 
 1. **Today** shows the next workout in the rotation (say *Day 3 · Legs + posterior*), its six lifts with weight × reps from the engine, and how many of this week's five are done. Any day of the week can be a workout day.
 2. **The rotation never skips.** The next workout is always the one after the last one trained: do Day 1 on Monday, rest Tuesday, and Wednesday is Day 2. A workout started but abandoned on an earlier day still counts if at least one working set was logged. One workout per calendar day.
-3. **Live lift**: the lift name, an optional *Watch form video* link, the set (*Set 2 of 3*), the giant `40 × 9`, *Last time*, set bars and **Log set**. The first lift has two warm-up sets first (≈50 % × 5, ≈75 % × 3) logged with *Warm-up done*; they never touch the engine.
+3. **Live lift**: the lift name, an optional *Watch form video* link, the set (*Set 2 of 3*), the giant `40 × 9`, *Last time*, set bars and **Log set**. Every workout starts with a guided warm-up of about five minutes (`WARMUPS` in `lib/engine/program.ts`): a minute to raise the heart rate, then movement prep for that day's joints and patterns (dead hangs and scapular pull-ups before pull-ups, leg swings, squats and good mornings before legs, and so on), with timers on the timed moves. Then the first lift gets ramp-up sets at ≈40 % × 8, ≈60 % × 5, ≈80 % × 3 on legal loads. Neither touches the engine, and the warm-up can be skipped.
 4. **Change the weight on any set** with − / + (legal Bowflex loads only). The change applies to that set and the rest of the lift, and is saved immediately. Bodyweight lifts have no weight control.
 5. **Log set** → the set is stored at the weight used → **rest**: an ember ring drains to 0:00 and the next set opens (between sets: the lift's rest; between lifts: 90 s; after warm-ups: 45 s). *Skip rest* is allowed and recorded on the set.
 6. Skipping a lift from the `‹` menu counts as a miss. Closing the app mid-lift and coming back another day also counts it as a miss; untouched lifts are left alone.
@@ -95,7 +101,7 @@ The spec was reviewed against current literature (Sept 2026) before coding. Ever
 | Change | Why (sources) |
 |---|---|
 | Rest: 120 s on the day's first two compounds, 90 s other compounds, 75 s unilateral/isolation/hanging, 60 s core (spec: 90/60/75) | ≤60 s measurably cuts reps and hypertrophy; trained lifters need >2 min on heavy compounds. Singer 2024 (Front Sports Act Living), Grgic 2017. Session still ≈ 40 min. |
-| Two warm-up sets on lift #1 (50 % × 5, 75 % × 3) instead of one at 50 % | Schoenfeld's warm-up protocol; high-load/low-volume warm-ups improve session performance. |
+| A five-minute movement warm-up per workout, then three ramp-up sets on lift #1 (≈40 / 60 / 80 %) | Raise, mobilize, then rehearse the pattern: dynamic warm-ups improve performance (Fradkin 2010), long static stretching right before heavy work doesn't (Behm 2016), and a few lighter specific sets prepare the first heavy lift. |
 | Loaded Russian twist → **half-kneeling anti-rotation press** (Mon #5) | Loaded flexion + rotation is the documented disc-injury mechanism; train the flexion *moment*, not the motion (McGill; Marshall & McGill). |
 | Day 5 anti-rotation slot → **DB RDL** (shares progression with Day 3) | Hamstrings/glutes were trained once a week; ACSM 2026 and Pelland 2025 support ≥2 sessions per muscle per week. |
 | Sixth lift added to every day: **lateral raise** (Mon), **incline DB curl** (Tue), **Nordic curl** (Wed), **feet-elevated push-up** (Thu), **reverse lunge** moved to Fri, **RFE split squat** added to Wed | 15 working sets/day ≈ 41 min, under the 45–60 min budget; quads (6 sets/wk), hamstrings, side delts and biceps were all below ACSM 2026's ≥10 sets/muscle/week. The RFE split squat also dodges the dumbbell ceiling — one leg carries ~2× the load of a goblet squat. |

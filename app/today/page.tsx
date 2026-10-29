@@ -129,7 +129,7 @@ export default async function TodayPage() {
           ))}
         </ul>
         <p className="faint mt-3">
-          {WORK_SETS} sets each. You can change the weight on any set.
+          Starts with a 5-minute warm-up. {WORK_SETS} sets each, and you can change the weight on any set.
         </p>
         <Link href="/week" className="link self-start text-[14px] mt-3">
           See the whole week

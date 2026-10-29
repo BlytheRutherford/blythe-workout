@@ -17,6 +17,7 @@ import {
   NOTE_HOLD_SETS,
   RETIRED_VARIANTS,
   settleLift,
+  warmupFor,
   isLegal,
   LEGAL_LOADS,
   liftResultFromSets,
@@ -170,18 +171,34 @@ describe("warm-up", () => {
       ]),
     ).toBe("not_started");
   });
-  it("uses legal loads at ~50 % and ~75 %, min 5 lb", () => {
+  it("ramps up at ~40 / 60 / 80 % on legal loads, each heavier than the last", () => {
     expect(warmupSets(40, 8, spec)).toEqual([
-      { weight: 20, reps: 5 },
+      { weight: 15, reps: 8 },
+      { weight: 25, reps: 5 },
       { weight: 30, reps: 3 },
     ]);
     expect(warmupSets(10, 8, spec)).toEqual([
-      { weight: 5, reps: 5 },
+      { weight: 5, reps: 8 },
       { weight: 7.5, reps: 3 },
     ]);
-    expect(warmupSets(5, 8, spec)).toEqual([{ weight: 5, reps: 5 }]);
+    expect(warmupSets(5, 8, spec)).toEqual([{ weight: 5, reps: 8 }]);
     expect(warmupSets(0, 8, bw)).toEqual([{ weight: 0, reps: 4 }]);
     expect(warmupSets(0, 5, bw)).toEqual([{ weight: 0, reps: 3 }]);
+    for (const w of LEGAL_LOADS) {
+      const sets = warmupSets(w, 8, spec);
+      for (let i = 0; i < sets.length; i++) {
+        expect(isLegal(sets[i].weight)).toBe(true);
+        if (w > 5) expect(sets[i].weight).toBeLessThan(w);
+        if (i > 0) expect(sets[i].weight).toBeGreaterThan(sets[i - 1].weight);
+      }
+    }
+  });
+  it("gives every workout a movement warm-up of about five minutes", () => {
+    for (let d = 1; d <= 5; d++) {
+      const moves = warmupFor(d);
+      expect(moves.length).toBeGreaterThanOrEqual(5);
+      for (const m of moves) expect(Boolean(m.seconds) || Boolean(m.dose)).toBe(true);
+    }
   });
 });
 

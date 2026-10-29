@@ -413,3 +413,59 @@ export function displayName(
   if (key) return variantFor(key, variantIndex).name;
   return def.name;
 }
+
+/**
+ * One move in a workout's warm-up. Timed moves (`seconds`) get a countdown;
+ * the rest are done for the reps shown, then tapped off.
+ */
+export interface WarmupMove {
+  name: string;
+  /** What to do: "10 each way", "8/side". Ignored for timed moves. */
+  dose?: string;
+  seconds?: number;
+  cue: string;
+}
+
+/*
+ * Warm-ups, about five minutes before the first lift, then ramp-up sets on that
+ * lift (see rampUpSets). The shape follows the usual RAMP structure: raise the
+ * heart rate and muscle temperature first, then move the joints the workout
+ * loads through their full range, then rehearse the first lift's pattern
+ * lightly. Dynamic work before lifting improves session performance; long static
+ * stretching right before heavy work doesn't (Behm 2016; Fradkin 2010 on
+ * warm-ups and performance).
+ */
+const RAISE_UPPER: WarmupMove = { name: "Jumping jacks", seconds: 45, cue: "Easy pace. Just get warm." };
+const RAISE_LOWER: WarmupMove = { name: "High knees in place", seconds: 45, cue: "Light and quick. Swing the arms." };
+const ARM_CIRCLES: WarmupMove = { name: "Arm circles", dose: "10 each way", cue: "Start small, finish big. Slow at the top." };
+const SCAP_PUSH_UP: WarmupMove = { name: "Scapular push-up", dose: "10", cue: "Arms locked. Let the chest sink between the shoulder blades, then push the floor away." };
+const EXTERNAL_ROTATION: WarmupMove = { name: "Side-lying external rotation", dose: "10/side, 5 lb", cue: "Elbow pinned to your side, rotate the dumbbell up toward the ceiling." };
+const SLOW_PUSH_UP: WarmupMove = { name: "Slow push-up", dose: "8", cue: "Three seconds down, pause, push up. Knees down if needed." };
+const DEAD_HANG: WarmupMove = { name: "Dead hang", seconds: 20, cue: "Hang from the bar, shoulders relaxed. Let the lats stretch." };
+const SCAP_PULL_UP: WarmupMove = { name: "Scapular pull-up", dose: "8", cue: "Arms straight. Pull the shoulder blades down and back, then let them rise." };
+const PRONE_Y: WarmupMove = { name: "Prone Y raise", dose: "8", cue: "Face down on the incline bench, thumbs up, raise the arms into a Y." };
+const LEG_SWINGS: WarmupMove = { name: "Leg swings", dose: "10/side", cue: "Hold the wall. Front to back, a little higher each swing." };
+const BW_SQUAT: WarmupMove = { name: "Bodyweight squat", dose: "10", cue: "Sit all the way down, chest up, knees track over the toes." };
+const GLUTE_BRIDGE: WarmupMove = { name: "Glute bridge", dose: "10", cue: "Squeeze at the top for two seconds." };
+const REVERSE_LUNGE: WarmupMove = { name: "Reverse lunge, bodyweight", dose: "5/side", cue: "Long step back, back knee just above the floor." };
+const BW_GOOD_MORNING: WarmupMove = { name: "Bodyweight good morning", dose: "10", cue: "Hands on hips, soft knees, push the hips back until the hamstrings stretch." };
+const DEAD_BUG: WarmupMove = { name: "Dead bug", dose: "5/side", cue: "Lower back pressed into the floor the whole time." };
+const LIGHT_OH_PRESS: WarmupMove = { name: "Light overhead press", dose: "10, 5–10 lb", cue: "Smooth reps through the full range. Groove the path." };
+const LIGHT_ROW: WarmupMove = { name: "Light bent-over row", dose: "10, 10 lb", cue: "Hinge, flat back, pull the elbows to the hips." };
+
+export const WARMUPS: Record<number, WarmupMove[]> = {
+  // Chest + core: shoulders and the press pattern, plus the core for the hanging work.
+  1: [RAISE_UPPER, ARM_CIRCLES, SCAP_PUSH_UP, EXTERNAL_ROTATION, SLOW_PUSH_UP, DEAD_BUG],
+  // Back + arms: pull-ups first, so the bar, the shoulder blades and the grip.
+  2: [RAISE_UPPER, ARM_CIRCLES, DEAD_HANG, SCAP_PULL_UP, PRONE_Y, LIGHT_ROW],
+  // Legs + posterior: hips, knees and the squat and hinge patterns.
+  3: [RAISE_LOWER, LEG_SWINGS, BW_SQUAT, GLUTE_BRIDGE, REVERSE_LUNGE, BW_GOOD_MORNING],
+  // Push + arms: shoulders for two presses in a row, then the press pattern.
+  4: [RAISE_UPPER, ARM_CIRCLES, SCAP_PUSH_UP, EXTERNAL_ROTATION, LIGHT_OH_PRESS, SLOW_PUSH_UP],
+  // Back + posterior: the bar for pull-ups, then the hinge and lunge for the legs.
+  5: [RAISE_LOWER, DEAD_HANG, SCAP_PULL_UP, LEG_SWINGS, BW_GOOD_MORNING, GLUTE_BRIDGE],
+};
+
+export function warmupFor(dayIndex: number): WarmupMove[] {
+  return WARMUPS[dayIndex] ?? [];
+}

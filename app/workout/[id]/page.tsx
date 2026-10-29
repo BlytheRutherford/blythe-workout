@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { DAYS } from "@/lib/engine";
+import { DAYS, warmupFor } from "@/lib/engine";
 import { getSessionById } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { Workout } from "./workout";
@@ -17,5 +17,5 @@ export default async function WorkoutPage({ params }: PageProps<"/workout/[id]">
   if (bundle.session.status === "abandoned") redirect("/today");
   const day = DAYS[bundle.session.day_index - 1];
 
-  return <Workout bundle={bundle} dayLabel={day.label} dayName={day.name} />;
+  return <Workout bundle={bundle} dayLabel={day.label} dayName={day.name} warmup={warmupFor(bundle.session.day_index)} />;
 }

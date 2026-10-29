@@ -212,21 +212,28 @@ export interface WarmupSet {
 }
 
 /**
- * Warm-up sets for the first lift of the day only.
- * Loaded: ~50 % × 5 then ~75 % × 3 (snapped to legal loads, min 5 lb,
- * never equal to the working weight). Bodyweight: one half-rep-count set.
- * Warm-ups are never counted by the engine.
+ * Ramp-up sets for the first lift of the workout, after the movement warm-up
+ * (WARMUPS). Loaded: ~40 % × 8, ~60 % × 5, ~80 % × 3, snapped to legal loads,
+ * each lighter than the working weight and heavier than the one before, so the
+ * last one feels close to the real thing without tiring you. Light lifts end up
+ * with fewer steps. Bodyweight: one easy set at about half the reps.
+ * Ramp-up sets are never counted by the engine.
  */
 export function warmupSets(weight: number, reps: number, spec: ExerciseSpec): WarmupSet[] {
   if (spec.isBodyweight || weight <= 0) {
-    return [{ weight: 0, reps: Math.max(3, Math.ceil(reps / 2)) }];
+    return [{ weight: 0, reps: Math.max(2, Math.ceil(reps / 2)) }];
   }
-  const w1 = snapToLegal(weight * 0.5, "nearest");
-  const w2 = snapToLegal(weight * 0.75, "nearest");
   const sets: WarmupSet[] = [];
-  if (w1 < weight) sets.push({ weight: w1, reps: 5 });
-  if (w2 < weight && w2 !== w1) sets.push({ weight: w2, reps: 3 });
-  if (sets.length === 0) sets.push({ weight: 5, reps: 5 });
+  for (const [pct, r] of [
+    [0.4, 8],
+    [0.6, 5],
+    [0.8, 3],
+  ] as const) {
+    const w = snapToLegal(weight * pct, "nearest");
+    const prev = sets.at(-1)?.weight ?? 0;
+    if (w < weight && w > prev) sets.push({ weight: w, reps: r });
+  }
+  if (sets.length === 0) sets.push({ weight: 5, reps: 8 });
   return sets;
 }
 
