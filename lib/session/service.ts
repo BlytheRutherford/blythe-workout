@@ -79,7 +79,10 @@ export async function ensureExerciseStates(
   const have = new Set((existing ?? []).map((r: { exercise_key: string }) => r.exercise_key));
   const rows = EXERCISE_KEYS.filter((k) => !have.has(k)).map((key) => stateRow(userId, key, activity, bodyweightLb));
   if (rows.length === 0) return;
-  const { error: insErr } = await db.from("user_exercise_state").insert(rows);
+  // Two pages loading at once can both get here; whichever inserts second just skips.
+  const { error: insErr } = await db
+    .from("user_exercise_state")
+    .upsert(rows, { onConflict: "user_id,exercise_key", ignoreDuplicates: true });
   if (insErr) throw new ServiceError(insErr.message, 500);
 }
 
