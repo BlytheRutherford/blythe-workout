@@ -9,7 +9,6 @@ import { previewWorkout, weekPlan } from "@/lib/session/preview";
 import { finalizeStaleSessions, getProfile, getSessionForDate } from "@/lib/session/service";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { StartWorkout } from "./start-workout";
-import { WalkNote } from "./walk-note";
 
 export const dynamic = "force-dynamic";
 
@@ -132,8 +131,7 @@ export default async function TodayPage() {
         <p className="faint mt-3">
           {WORK_SETS} sets each. You can change the weight on any set.
         </p>
-        <WalkNote sessionId={session?.session.id ?? null} done={session?.session.walk_done ?? false} />
-        <Link href="/week" className="link self-start text-[14px]">
+        <Link href="/week" className="link self-start text-[14px] mt-3">
           See the whole week
         </Link>
         <div className="flex-1 min-h-8" />

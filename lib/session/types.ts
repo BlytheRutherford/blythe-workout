@@ -40,7 +40,6 @@ export interface SessionRow {
   status: SessionStatus;
   started_at: string;
   completed_at: string | null;
-  walk_done: boolean;
 }
 
 export interface LiftRow {
