@@ -4,7 +4,7 @@ A strength-training app I built for my home gym: Bowflex adjustable dumbbells, a
 
 ## What it does
 
-- **Runs a five-workout program.** Six lifts per workout, three sets each. The workouts aren't tied to weekdays: the next one is always the one after the last one I did, and the goal is five per week, Monday to Sunday.
+- **Runs a five-workout program built to grow the upper body.** Chest, upper back, traps, neck, biceps and triceps get most of the week's work; legs and abs get enough to stay strong and look good. Six lifts per workout, three sets each. The workouts aren't tied to weekdays: the next one is always the one after the last one I did, and the goal is five per week, Monday to Sunday.
 - **Does the progressive overload for me.** Each lift uses double progression: add a rep each time every set is completed, and once the top of the rep range is reached, move up to the next weight the dumbbells actually allow (5–52.5 lb, skipping 27.5 and 32.5). Misses hold the weight once, then drop it a step.
 - **Lets me change the weight on any set.** If the first set is too heavy, I drop it for the rest of the lift, and the next workout builds from the weight I actually used.
 - **Keeps going past the heaviest dumbbell.** At 52.5 lb a lift adds reps, then graduates to a harder version of the movement (single-arm, deficit, slower) so progress doesn't stop.
@@ -64,13 +64,15 @@ Six lifts × 3 working sets = 18 working sets a workout, ≈ 47–52 min includi
 
 | Workout | Lifts |
 |---|---|
-| **Day 1 · chest + core** | incline DB press · flat DB press · DB pullover · lateral raise · hanging knee raise · half-kneeling anti-rotation press |
-| **Day 2 · back + arms** | pull-up · single-arm DB row · chest-supported DB row · rear-delt fly · incline DB curl · dead bug |
-| **Day 3 · legs + posterior** | goblet squat · RFE split squat · DB RDL · prone DB leg curl · DB hip thrust · single-leg calf raise |
-| **Day 4 · push + arms** | decline/flat DB press · seated DB overhead press · overhead DB extension · hammer curl · lateral raise · feet-elevated push-up |
-| **Day 5 · back + posterior** | pull-up · two-arm bent-over row · reverse lunge · DB RDL · hanging leg raise · seated single-leg calf raise |
+| **Day 1 · chest + triceps** | incline DB press · flat DB press · incline DB fly · DB skull crusher · lateral raise · neck curl |
+| **Day 2 · back + biceps** | pull-up · single-arm DB row · chest-supported DB row · DB shrug · incline DB curl · neck extension |
+| **Day 3 · legs + abs** | goblet squat · RFE split squat · DB RDL · prone DB leg curl · single-leg calf raise · hanging leg raise |
+| **Day 4 · chest + arms** | decline/flat DB press · close-grip DB press · overhead DB extension · hammer curl · lateral raise · weighted decline crunch |
+| **Day 5 · back + chest** | pull-up · two-arm bent-over row · rear-delt fly · DB shrug · spider curl · feet-elevated push-up |
 
-Pull-ups (Day 2 and Day 5) share one progression, so reps go up each time either workout is done, as long as every set is hit. All pull-up variations start at 5 reps (range 5–10).
+Weekly working sets: chest 15 (three days), upper back 18, traps 6, neck 6, biceps 9, triceps 9 plus the close-grip press, side delts 6, legs 15, abs 6.
+
+Lifts that appear twice (pull-ups, shrugs, lateral raises) share one progression, so reps go up each time either workout is done, as long as every set is hit. All pull-up variations start at 5 reps (range 5–10).
 
 ## Never running out of road at 52.5 lb
 
@@ -86,7 +88,7 @@ The ladders use only what the evidence supports for a fixed load ceiling: conver
 
 Legal Bowflex 552 loads only: 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 30, 35, 40, 45, 50, 52.5. 27.5 and 32.5 never appear; anything else snaps to the next legal load.
 
-- Double progression per lift, 8–12 reps (calves 10–15 standing, 12–20 seated, leg curl 10–15, pull-ups 5–10).
+- Double progression per lift, 8–12 reps (calves, leg curl, fly, shrug, crunch 10–15; pull-ups 5–10; neck 15–25 at bodyweight, then 12–20 weighted).
 - **Weight changed mid-lift**: the lift settles on the median of its three set weights (40 · 35 · 35 → 35; 30 · 35 · 35 → 35; 40 · 40 · 35 → 40) and the next workout builds from it. If a later set went lighter than that weight after reaching it (40 · 40 · 35), the same prescription is held, without counting a miss. Starting light and moving up progresses normally (`settleLift`).
 - All three sets hit and reps below the ceiling → same weight, +1 rep. At the ceiling → next legal load, reps back to the floor.
 - Miss (lift started, left before three LOG SETs) → hold once. Second straight miss → one increment down, reps to the floor. A prescription is never issued a third time without graduating or deloading.
@@ -100,20 +102,16 @@ The spec was reviewed against current literature (Sept 2026) before coding. Ever
 
 | Change | Why (sources) |
 |---|---|
+| **Upper-torso focus** (Nov 2026): leg sets 27 → 15 on one day, abs 12 → 6; added incline fly, skull crusher, close-grip press, spider curl, shrugs ×2, neck curl and neck extension; dropped the overhead press, pullover, hip thrust, reverse lunge, second RDL, seated calf raise, dead bug, anti-rotation press and knee raise | The goal changed to building the chest, upper back, neck and arms. Chest and upper back sit in the 10–20 sets/week band at 2–3 sessions each, and the arms get 9 direct sets on top of the work they do in every press and row (Pelland 2025; ACSM 2026). Legs keep their size on about a third of the volume while the load stays heavy (Bickel 2011; Spiering 2021). Direct neck training grows the neck muscles (Conley 1997). Incline pressing already loads the front delts, so the overhead press went first. |
 | Rest: 120 s on the day's first two compounds, 90 s other compounds, 75 s unilateral/isolation/hanging, 60 s core (spec: 90/60/75) | ≤60 s measurably cuts reps and hypertrophy; trained lifters need >2 min on heavy compounds. Singer 2024 (Front Sports Act Living), Grgic 2017. Session still ≈ 40 min. |
 | A five-minute movement warm-up per workout, then three ramp-up sets on lift #1 (≈40 / 60 / 80 %) | Raise, mobilize, then rehearse the pattern: dynamic warm-ups improve performance (Fradkin 2010), long static stretching right before heavy work doesn't (Behm 2016), and a few lighter specific sets prepare the first heavy lift. |
-| Loaded Russian twist → **half-kneeling anti-rotation press** (Mon #5) | Loaded flexion + rotation is the documented disc-injury mechanism; train the flexion *moment*, not the motion (McGill; Marshall & McGill). |
-| Day 5 anti-rotation slot → **DB RDL** (shares progression with Day 3) | Hamstrings/glutes were trained once a week; ACSM 2026 and Pelland 2025 support ≥2 sessions per muscle per week. |
 | Sixth lift added to every day: **lateral raise** (Mon), **incline DB curl** (Tue), **Nordic curl** (Wed), **feet-elevated push-up** (Thu), **reverse lunge** moved to Fri, **RFE split squat** added to Wed | 15 working sets/day ≈ 41 min, under the 45–60 min budget; quads (6 sets/wk), hamstrings, side delts and biceps were all below ACSM 2026's ≥10 sets/muscle/week. The RFE split squat also dodges the dumbbell ceiling — one leg carries ~2× the load of a goblet squat. |
 | **Knee-flexion hamstring lift** alongside the RDL: first the Nordic curl, now the **prone DB leg curl** (Oct 2026) | Maeo 2024 (MRI, n=42): hip-hinge and knee-flexion hamstring work grow different heads; neither substitutes for the other. The assisted Nordic was hard to load and progress at home, so it was replaced by a dumbbell leg curl that progresses by weight like every other lift. Its ladder: prone → incline prone (hips bent; seated-style curls grew the hamstrings more than lying ones, Maeo 2021) → sliding leg curl → single-leg sliding leg curl. |
-| Skull crusher → **seated two-hand overhead DB extension**, seed 25 lb | Overhead position grows all three triceps heads more (Maeo 2023); "40 lb" per hand was implausible next to a 35 lb flat press. |
-| Bench back extension → **DB hip thrust** (10–15) | A flat bench can't anchor the feet; hip thrust adds glute volume safely with the same bench. |
-| Day 5 calf raise → **seated single-leg calf raise** (12–20) | Soleus needs bent-knee work; keep Day 3's straight-leg raise for gastrocnemius (Kassiano 2023 favours the long-length stretch). |
-| Seated OH press seed 25 → 30 lb | DB shoulder press ≈ 80 % of incline DB press at intermediate level; 25/40 was the outlier. |
+| **Seated two-hand overhead DB extension** kept alongside the new skull crusher | Overhead position grows all three triceps heads more (Maeo 2023), so it stays; the skull crusher and close-grip press add volume from other angles. |
 | Adaptive rep ceiling (above) | Adjustable dumbbells jump 5–50 % per step, not the 2–10 % classic double progression assumes. |
 | No scheduled deloads | A planned deload week reduced strength gains with no hypertrophy benefit (Coleman 2024); reactive-only is correct. |
 
-Kept as specified: everything else — five workouts, 8–12 default range, hit/miss rules, Day 4 decline/flat alternation by ISO week (shared progression), goblet squat, DB pullover (a chest lift, not a lat lift), hanging knee/leg raises, the walk outside the app, `52.5` cap behaviour.
+Kept as specified: everything else — five workouts, 8–12 default range, hit/miss rules, Day 4 decline/flat alternation by ISO week (shared progression), goblet squat, `52.5` cap behaviour.
 
 Sources: Singer et al. 2024 <https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/full> · Grgic et al. 2017 · Robinson et al. 2024 <https://link.springer.com/article/10.1007/s40279-024-02069-2> · Pelland et al. 2025 <https://link.springer.com/article/10.1007/s40279-025-02344-w> · ACSM 2026 position stand <https://acsm.org/resistance-training-guidelines-update-2026/> · Maeo et al. 2023 <https://onlinelibrary.wiley.com/doi/10.1080/17461391.2022.2100279> · Kassiano et al. 2023 <https://pubmed.ncbi.nlm.nih.gov/37015016/> · McGill, *Spine flexion: myths, truths and issues* <https://www.backfitpro.com/documents/Spine-flexion-myths-truths-and-issues.pdf> · Coleman et al. 2024 <https://peerj.com/articles/16777/> · Schumann et al. 2022 (concurrent training) <https://link.springer.com/doi/10.1007/s40279-022-01688-x>.
 

@@ -357,3 +357,40 @@ describe("program changes", () => {
     expect(variantFor("nordic-curl", 0).name).toBe(RETIRED_VARIANTS["nordic-curl"][0].name);
   });
 });
+
+describe("upper-torso focus (Nov 2026)", () => {
+  const days = [1, 2, 3, 4, 5].map((d) => exercisesForDay(d).map((e) => e.key));
+  const all = days.flat();
+  const sets = (keys: string[]) => all.filter((k) => keys.includes(k)).length * 3;
+
+  it("puts most of the week into chest, back, traps, neck and arms", () => {
+    expect(sets(["incline-db-press", "flat-db-press", "incline-db-fly", "thu-press", "push-up"])).toBe(15);
+    expect(sets(["pull-up", "single-arm-db-row", "chest-supported-db-row", "bent-over-row", "rear-delt-fly"])).toBe(18);
+    expect(sets(["db-shrug"])).toBe(6);
+    expect(sets(["neck-curl", "neck-extension"])).toBe(6);
+    expect(sets(["incline-db-curl", "hammer-curl", "spider-curl"])).toBe(9);
+    expect(sets(["db-skull-crusher", "overhead-db-extension", "close-grip-db-press"])).toBe(9);
+  });
+
+  it("keeps legs on one day and abs on two", () => {
+    const legs = ["goblet-squat", "rfe-split-squat", "db-rdl", "db-leg-curl", "single-leg-calf-raise"];
+    expect(days[2].filter((k) => legs.includes(k))).toHaveLength(5);
+    expect(days.filter((d, i) => i !== 2).flat().some((k) => legs.includes(k))).toBe(false);
+    expect(sets(["hanging-leg-raise", "decline-crunch"])).toBe(6);
+  });
+
+  it("starts both neck lifts at bodyweight with slow high reps", () => {
+    for (const key of ["neck-curl", "neck-extension"]) {
+      const first = VARIANTS[key][0];
+      expect(first.isBodyweight).toBe(true);
+      expect(first.rangeMin).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it("drops the retired lifts from new workouts but keeps their history readable", () => {
+    for (const key of ["db-pullover", "seated-db-oh-press", "db-hip-thrust", "reverse-lunge", "seated-calf-raise", "dead-bug", "anti-rotation-press", "hanging-knee-raise"]) {
+      expect(EXERCISE_KEYS).not.toContain(key);
+      expect(variantFor(key, 0).name.length).toBeGreaterThan(0);
+    }
+  });
+});

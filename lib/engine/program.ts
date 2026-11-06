@@ -8,6 +8,11 @@
  * The SQL seed (supabase/seed.sql) is generated from this file by
  * `npm run gen:seed`, so edit here, never in SQL.
  *
+ * Focus (Nov 2026): the upper torso — chest, upper back, traps, neck, biceps
+ * and triceps — gets most of the week's sets; legs and abs get enough to keep
+ * them strong and looking good (one leg day, two ab slots). Volume moved from
+ * legs to the torso rather than adding time, so sessions stay six lifts.
+ *
  * Evidence notes (see README "Program evidence"):
  *  - 6 lifts × 3 sets ≈ 47–52 min, inside the 45–60 min budget (Remmert 2025
  *    per-session ceiling ≈ 8 direct sets/muscle; Iversen 2021 time modelling).
@@ -19,9 +24,14 @@
  *    (Fonseca 2014) and from earned graduation up each lift's variant ladder.
  *  - rest: 120 s on the day's heavy compounds, 90 s other compounds,
  *    75 s unilateral / hanging / isolation, 60 s core (Singer 2024; Grgic 2017).
- *  - loaded Russian twist replaced by a half-kneeling anti-rotation press-out
- *    (McGill: train flexion moment, not loaded flexion + rotation).
- *  - skull crusher replaced by seated overhead DB extension (Maeo 2023).
+ *  - triceps get an overhead extension (long-head stretch: overhead work grew
+ *    the triceps more than arms-down work, Maeo 2023), a lying extension and
+ *    a close-grip press, so all three heads are loaded.
+ *  - legs hold or keep growing on one weekly session: muscle is maintained on
+ *    about a third of the volume as long as the load stays heavy
+ *    (Bickel 2011; Spiering 2021).
+ *  - direct neck training enlarges the neck muscles (Conley 1997); it starts at
+ *    bodyweight with slow high reps and loads in small steps.
  *  - both hamstring branches are trained: hip-hinge (RDL) grows the long head,
  *    knee flexion (the dumbbell leg curl) grows the rest — neither substitutes
  *    (Maeo 2024). Leg curls with the hips bent grow the hamstrings more than
@@ -96,11 +106,11 @@ export interface DayDef {
 }
 
 export const DAYS: DayDef[] = [
-  { day: 1, label: "Day 1", name: "Chest + core" },
-  { day: 2, label: "Day 2", name: "Back + arms" },
-  { day: 3, label: "Day 3", name: "Legs + posterior" },
-  { day: 4, label: "Day 4", name: "Push + arms" },
-  { day: 5, label: "Day 5", name: "Back + posterior" },
+  { day: 1, label: "Day 1", name: "Chest + triceps" },
+  { day: 2, label: "Day 2", name: "Back + biceps" },
+  { day: 3, label: "Day 3", name: "Legs + abs" },
+  { day: 4, label: "Day 4", name: "Chest + arms" },
+  { day: 5, label: "Day 5", name: "Back + chest" },
 ];
 
 /** Workouts per Monday–Sunday week. */
@@ -135,10 +145,15 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Single-arm flat DB press", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "One arm at a time. Ribs down, hips square." },
     { name: "Deficit DB press", startWeight: 40, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Dumbbells turned in, elbows below the bench line." },
   ],
-  "db-pullover": [
-    { name: "DB pullover", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
-    { name: "Single-arm DB pullover", startWeight: 17.5, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
-    { name: "Cross-bench pullover", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Shoulders across the bench, hips low. Deeper stretch." },
+  "incline-db-fly": [
+    { name: "Incline DB fly", startWeight: 15, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Low incline, slight bend in the elbows. Let the chest stretch wide at the bottom." },
+    { name: "Incline fly + stretch partials", startWeight: 25, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "After the last full rep, half-reps in the bottom stretch." },
+    { name: "Single-arm incline fly", startWeight: 20, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side", cue: "One arm at a time, the other hand on your chest. Brace against the twist." },
+  ],
+  "close-grip-db-press": [
+    { name: "Close-grip DB press", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Flat bench, dumbbells touching, palms facing each other, elbows tucked to the ribs." },
+    { name: "Paused close-grip DB press", startWeight: 35, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Two seconds with the dumbbells on your chest, then press." },
+    { name: "Feet-elevated close-grip push-up", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 15, cue: "Hands under the shoulders, elbows brushing the ribs." },
   ],
   "lateral-raise": [
     { name: "Lateral raise", startWeight: 7.5, isBodyweight: false, rangeMin: 10, rangeMax: 15 },
@@ -172,6 +187,11 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Deficit bent-over row", startWeight: 35, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Stand on the bench. Full hang at the bottom." },
     { name: "Bent-over row + partials", startWeight: 45, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
   ],
+  "db-shrug": [
+    { name: "DB shrug", startWeight: 40, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Shoulders straight up toward the ears, hold a second at the top. No rolling." },
+    { name: "Paused DB shrug", startWeight: 40, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Hold three seconds at the top of every rep." },
+    { name: "Paused shrug, 4 s lower", startWeight: 45, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Three seconds at the top, four seconds down." },
+  ],
   "rear-delt-fly": [
     { name: "Rear-delt fly", startWeight: 10, isBodyweight: false, rangeMin: 10, rangeMax: 15 },
     { name: "Prone incline rear-delt fly", startWeight: 10, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Face down on the incline bench. No swing available." },
@@ -183,6 +203,11 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Single-arm incline curl", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
     { name: "Incline curl + partials", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
   ],
+  "spider-curl": [
+    { name: "Spider curl", startWeight: 12.5, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Chest down on the incline bench, arms hanging straight. Squeeze hard at the top." },
+    { name: "Single-arm spider curl", startWeight: 15, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
+    { name: "Spider curl + partials", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Half-reps at the top once the full ones stop." },
+  ],
   "hammer-curl": [
     { name: "Hammer curl", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
     { name: "Incline hammer curl", startWeight: 15, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Arms behind the body. Harder at the bottom." },
@@ -193,11 +218,10 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Single-arm overhead extension", startWeight: 15, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
     { name: "Feet-elevated bench dip", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 15, cue: "Hands on the bench, heels on the mat stack." },
   ],
-  "seated-db-oh-press": [
-    { name: "Seated DB overhead press", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
-    { name: "Standing single-arm OH press", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Standing, one arm. The core pays for the other side." },
-    { name: "Z-press", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Sat on the floor, legs straight. No leg drive at all." },
-    { name: "Pike push-up", startWeight: 0, isBodyweight: true, rangeMin: 6, rangeMax: 12, cue: "Feet on the bench, hips high." },
+  "db-skull-crusher": [
+    { name: "DB skull crusher", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Lying flat, palms facing each other. Only the elbows bend; lower the dumbbells beside your head." },
+    { name: "Incline DB skull crusher", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Bench at 30°. Elbows angle back past your head for a longer stretch." },
+    { name: "Incline skull crusher + partials", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
   ],
   "thu-press": [
     { name: "Decline DB press", startWeight: 35, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
@@ -218,11 +242,6 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Deficit RFE split squat", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Front foot on the mat stack. Knee travels further." },
     { name: "Paused deficit RFE split squat", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Two seconds at the bottom, no bounce." },
   ],
-  "reverse-lunge": [
-    { name: "Reverse lunge", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
-    { name: "Deficit reverse lunge", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Front foot on the mat stack. Back knee drops lower." },
-    { name: "Paused deficit reverse lunge", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
-  ],
   "db-rdl": [
     { name: "DB RDL", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
     { name: "B-stance RDL", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Back foot on the toe for balance only. Front leg takes it." },
@@ -235,32 +254,70 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Sliding leg curl", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 15, cue: "On your back, heels on a towel on a smooth floor. Hips up, curl the heels in, lower for 3 s." },
     { name: "Single-leg sliding leg curl", startWeight: 0, isBodyweight: true, rangeMin: 6, rangeMax: 12, repUnit: "/side" },
   ],
-  "db-hip-thrust": [
-    { name: "DB hip thrust", startWeight: 30, isBodyweight: false, rangeMin: 10, rangeMax: 15 },
-    { name: "Single-leg hip thrust", startWeight: 15, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side" },
-    { name: "Foot-elevated single-leg hip thrust", startWeight: 12.5, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side", cue: "Shoulders on the bench, working foot on the mat stack." },
-  ],
   "single-leg-calf-raise": [
     { name: "Single-leg calf raise", startWeight: 20, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side" },
     { name: "Deficit single-leg calf raise", startWeight: 25, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side", cue: "Toes on the mat stack. Let the heel drop all the way." },
     { name: "Deficit calf raise + partials", startWeight: 30, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side", cue: "Half-reps out of the stretch once the full ones stop." },
+  ],
+
+  // ---------------- neck
+  "neck-curl": [
+    { name: "Neck curl", startWeight: 0, isBodyweight: true, rangeMin: 15, rangeMax: 25, cue: "Face up, head off the end of the bench. Tuck your chin to your chest, lower slowly. Smooth, never jerky." },
+    { name: "Weighted neck curl", startWeight: 5, isBodyweight: false, rangeMin: 12, rangeMax: 20, cue: "Folded towel on your forehead, a light dumbbell held on it with both hands." },
+  ],
+  "neck-extension": [
+    { name: "Neck extension", startWeight: 0, isBodyweight: true, rangeMin: 15, rangeMax: 25, cue: "Face down, head off the end of the bench. Lower your chin, then lift until you're looking forward. Smooth, never jerky." },
+    { name: "Weighted neck extension", startWeight: 5, isBodyweight: false, rangeMin: 12, rangeMax: 20, cue: "Folded towel on the back of your head, a light dumbbell held on it with both hands." },
+  ],
+
+  // ---------------- core
+  "decline-crunch": [
+    { name: "Weighted decline crunch", startWeight: 10, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Feet hooked, dumbbell on your chest. Curl your ribs toward your hips; don't sit all the way up." },
+    { name: "Weighted decline crunch, 3 s lower", startWeight: 20, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Three seconds back down every rep." },
+    { name: "Long-lever decline crunch", startWeight: 10, isBodyweight: false, rangeMin: 10, rangeMax: 15, cue: "Dumbbell held overhead with straight arms." },
+  ],
+  "hanging-leg-raise": [
+    { name: "Hanging leg raise", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12 },
+    { name: "Hanging leg raise, 3 s lower", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12 },
+    { name: "Toes to handles", startWeight: 0, isBodyweight: true, rangeMin: 6, rangeMax: 12 },
+  ],
+};
+
+/**
+ * Lifts that have left the program. Old workouts still reference them, so
+ * history keeps rendering, but they never appear in a new workout.
+ */
+export const RETIRED_VARIANTS: Record<string, Variant[]> = {
+  "db-pullover": [
+    { name: "DB pullover", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
+    { name: "Single-arm DB pullover", startWeight: 17.5, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
+    { name: "Cross-bench pullover", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Shoulders across the bench, hips low. Deeper stretch." },
+  ],
+  "seated-db-oh-press": [
+    { name: "Seated DB overhead press", startWeight: 30, isBodyweight: false, rangeMin: 8, rangeMax: 12 },
+    { name: "Standing single-arm OH press", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Standing, one arm. The core pays for the other side." },
+    { name: "Z-press", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "Sat on the floor, legs straight. No leg drive at all." },
+    { name: "Pike push-up", startWeight: 0, isBodyweight: true, rangeMin: 6, rangeMax: 12, cue: "Feet on the bench, hips high." },
+  ],
+  "reverse-lunge": [
+    { name: "Reverse lunge", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
+    { name: "Deficit reverse lunge", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "Front foot on the mat stack. Back knee drops lower." },
+    { name: "Paused deficit reverse lunge", startWeight: 25, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
+  ],
+  "db-hip-thrust": [
+    { name: "DB hip thrust", startWeight: 30, isBodyweight: false, rangeMin: 10, rangeMax: 15 },
+    { name: "Single-leg hip thrust", startWeight: 15, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side" },
+    { name: "Foot-elevated single-leg hip thrust", startWeight: 12.5, isBodyweight: false, rangeMin: 10, rangeMax: 15, repUnit: "/side", cue: "Shoulders on the bench, working foot on the mat stack." },
   ],
   "seated-calf-raise": [
     { name: "Seated single-leg calf raise", startWeight: 20, isBodyweight: false, rangeMin: 12, rangeMax: 20, repUnit: "/side" },
     { name: "Deficit seated calf raise", startWeight: 25, isBodyweight: false, rangeMin: 12, rangeMax: 20, repUnit: "/side", cue: "Toes on the mat stack, dumbbell on the knee." },
     { name: "Deficit seated calf raise + partials", startWeight: 30, isBodyweight: false, rangeMin: 12, rangeMax: 20, repUnit: "/side" },
   ],
-
-  // ---------------- core
   "hanging-knee-raise": [
     { name: "Hanging knee raise", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12 },
     { name: "Hanging knee raise, 3 s lower", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12, cue: "Three seconds down. No swing." },
     { name: "Weighted hanging knee raise", startWeight: 5, isBodyweight: false, rangeMin: 8, rangeMax: 12, cue: "A dumbbell held between the feet." },
-  ],
-  "hanging-leg-raise": [
-    { name: "Hanging leg raise", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12 },
-    { name: "Hanging leg raise, 3 s lower", startWeight: 0, isBodyweight: true, rangeMin: 8, rangeMax: 12 },
-    { name: "Toes to handles", startWeight: 0, isBodyweight: true, rangeMin: 6, rangeMax: 12 },
   ],
   "anti-rotation-press": [
     { name: "Half-kneeling anti-rotation press", startWeight: 20, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: " breaths/side" },
@@ -272,13 +329,6 @@ export const VARIANTS: Record<string, Variant[]> = {
     { name: "Weighted dead bug", startWeight: 10, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side", cue: "A dumbbell held straight up over the chest." },
     { name: "Straight-leg dead bug", startWeight: 12.5, isBodyweight: false, rangeMin: 8, rangeMax: 12, repUnit: "/side" },
   ],
-};
-
-/**
- * Lifts that have left the program. Old workouts still reference them, so
- * history keeps rendering, but they never appear in a new workout.
- */
-export const RETIRED_VARIANTS: Record<string, Variant[]> = {
   "nordic-curl": [
     { name: "Assisted Nordic curl", startWeight: 0, isBodyweight: true, rangeMin: 5, rangeMax: 10 },
     { name: "Eccentric-only Nordic curl", startWeight: 0, isBodyweight: true, rangeMin: 5, rangeMax: 10 },
@@ -318,45 +368,45 @@ function slot(
 }
 
 export const EXERCISES: ExerciseDef[] = [
-  // ---------------- Day 1 — Chest + core
+  // ---------------- Day 1 — Chest + triceps
   slot("mon-incline-db-press", "incline-db-press", 1, 1, 120, "compound"),
   slot("mon-flat-db-press", "flat-db-press", 1, 2, 120, "compound"),
-  slot("mon-db-pullover", "db-pullover", 1, 3, 75, "isolation"),
-  slot("mon-lateral-raise", "lateral-raise", 1, 4, 75, "isolation"),
-  slot("mon-hanging-knee-raise", "hanging-knee-raise", 1, 5, 75, "hanging"),
-  slot("mon-anti-rotation-press", "anti-rotation-press", 1, 6, 60, "core"),
+  slot("mon-incline-db-fly", "incline-db-fly", 1, 3, 75, "isolation"),
+  slot("mon-db-skull-crusher", "db-skull-crusher", 1, 4, 75, "isolation"),
+  slot("mon-lateral-raise", "lateral-raise", 1, 5, 75, "isolation"),
+  slot("mon-neck-curl", "neck-curl", 1, 6, 60, "isolation"),
 
-  // ---------------- Day 2 — Back + arms
+  // ---------------- Day 2 — Back + biceps
   slot("tue-pull-up", "pull-up", 2, 1, 120, "compound"),
   slot("tue-single-arm-db-row", "single-arm-db-row", 2, 2, 90, "unilateral"),
   slot("tue-chest-supported-db-row", "chest-supported-db-row", 2, 3, 90, "compound"),
-  slot("tue-rear-delt-fly", "rear-delt-fly", 2, 4, 75, "isolation"),
+  slot("tue-db-shrug", "db-shrug", 2, 4, 75, "isolation"),
   slot("tue-incline-db-curl", "incline-db-curl", 2, 5, 75, "isolation"),
-  slot("tue-dead-bug", "dead-bug", 2, 6, 60, "core"),
+  slot("tue-neck-extension", "neck-extension", 2, 6, 60, "isolation"),
 
-  // ---------------- Day 3 — Legs + posterior
+  // ---------------- Day 3 — Legs + abs
   slot("wed-goblet-squat", "goblet-squat", 3, 1, 120, "compound"),
   slot("wed-rfe-split-squat", "rfe-split-squat", 3, 2, 120, "unilateral"),
   slot("wed-db-rdl", "db-rdl", 3, 3, 90, "compound"),
   slot("wed-db-leg-curl", "db-leg-curl", 3, 4, 75, "isolation"),
-  slot("wed-db-hip-thrust", "db-hip-thrust", 3, 5, 75, "compound"),
-  slot("wed-single-leg-calf-raise", "single-leg-calf-raise", 3, 6, 60, "isolation"),
+  slot("wed-single-leg-calf-raise", "single-leg-calf-raise", 3, 5, 60, "isolation"),
+  slot("wed-hanging-leg-raise", "hanging-leg-raise", 3, 6, 75, "hanging"),
 
-  // ---------------- Day 4 — Push + arms
+  // ---------------- Day 4 — Chest + arms
   slot("thu-press", "thu-press", 4, 1, 120, "compound", { variantRule: "thu-press" }),
-  slot("thu-seated-db-oh-press", "seated-db-oh-press", 4, 2, 120, "compound"),
+  slot("thu-close-grip-db-press", "close-grip-db-press", 4, 2, 90, "compound"),
   slot("thu-overhead-db-extension", "overhead-db-extension", 4, 3, 75, "isolation"),
   slot("thu-hammer-curl", "hammer-curl", 4, 4, 75, "isolation"),
   slot("thu-lateral-raise", "lateral-raise", 4, 5, 75, "isolation"),
-  slot("thu-push-up", "push-up", 4, 6, 75, "compound"),
+  slot("thu-decline-crunch", "decline-crunch", 4, 6, 60, "core"),
 
-  // ---------------- Day 5 — Back + posterior
+  // ---------------- Day 5 — Back + chest
   slot("fri-pull-up", "pull-up", 5, 1, 120, "compound"),
   slot("fri-bent-over-row", "bent-over-row", 5, 2, 120, "compound"),
-  slot("fri-reverse-lunge", "reverse-lunge", 5, 3, 90, "unilateral"),
-  slot("fri-db-rdl", "db-rdl", 5, 4, 90, "compound"),
-  slot("fri-hanging-leg-raise", "hanging-leg-raise", 5, 5, 75, "hanging"),
-  slot("fri-seated-calf-raise", "seated-calf-raise", 5, 6, 60, "isolation"),
+  slot("fri-rear-delt-fly", "rear-delt-fly", 5, 3, 75, "isolation"),
+  slot("fri-db-shrug", "db-shrug", 5, 4, 75, "isolation"),
+  slot("fri-spider-curl", "spider-curl", 5, 5, 75, "isolation"),
+  slot("fri-push-up", "push-up", 5, 6, 75, "compound"),
 ];
 
 /** Unique progression keys, in first-appearance order. */
@@ -450,20 +500,20 @@ const GLUTE_BRIDGE: WarmupMove = { name: "Glute bridge", dose: "10", cue: "Squee
 const REVERSE_LUNGE: WarmupMove = { name: "Reverse lunge, bodyweight", dose: "5/side", cue: "Long step back, back knee just above the floor." };
 const BW_GOOD_MORNING: WarmupMove = { name: "Bodyweight good morning", dose: "10", cue: "Hands on hips, soft knees, push the hips back until the hamstrings stretch." };
 const DEAD_BUG: WarmupMove = { name: "Dead bug", dose: "5/side", cue: "Lower back pressed into the floor the whole time." };
-const LIGHT_OH_PRESS: WarmupMove = { name: "Light overhead press", dose: "10, 5–10 lb", cue: "Smooth reps through the full range. Groove the path." };
+const NECK_MOBILITY: WarmupMove = { name: "Neck nods and turns", dose: "10 each", cue: "Slow chin tucks, then look left and right. Small, easy range." };
 const LIGHT_ROW: WarmupMove = { name: "Light bent-over row", dose: "10, 10 lb", cue: "Hinge, flat back, pull the elbows to the hips." };
 
 export const WARMUPS: Record<number, WarmupMove[]> = {
-  // Chest + core: shoulders and the press pattern, plus the core for the hanging work.
-  1: [RAISE_UPPER, ARM_CIRCLES, SCAP_PUSH_UP, EXTERNAL_ROTATION, SLOW_PUSH_UP, DEAD_BUG],
-  // Back + arms: pull-ups first, so the bar, the shoulder blades and the grip.
-  2: [RAISE_UPPER, ARM_CIRCLES, DEAD_HANG, SCAP_PULL_UP, PRONE_Y, LIGHT_ROW],
-  // Legs + posterior: hips, knees and the squat and hinge patterns.
+  // Chest + triceps: shoulders and the press pattern, and the neck before neck curls.
+  1: [RAISE_UPPER, ARM_CIRCLES, NECK_MOBILITY, SCAP_PUSH_UP, EXTERNAL_ROTATION, SLOW_PUSH_UP],
+  // Back + biceps: pull-ups first, so the bar, the shoulder blades and the grip; neck for the extensions.
+  2: [RAISE_UPPER, ARM_CIRCLES, NECK_MOBILITY, DEAD_HANG, SCAP_PULL_UP, LIGHT_ROW],
+  // Legs + abs: hips, knees and the squat and hinge patterns.
   3: [RAISE_LOWER, LEG_SWINGS, BW_SQUAT, GLUTE_BRIDGE, REVERSE_LUNGE, BW_GOOD_MORNING],
-  // Push + arms: shoulders for two presses in a row, then the press pattern.
-  4: [RAISE_UPPER, ARM_CIRCLES, SCAP_PUSH_UP, EXTERNAL_ROTATION, LIGHT_OH_PRESS, SLOW_PUSH_UP],
-  // Back + posterior: the bar for pull-ups, then the hinge and lunge for the legs.
-  5: [RAISE_LOWER, DEAD_HANG, SCAP_PULL_UP, LEG_SWINGS, BW_GOOD_MORNING, GLUTE_BRIDGE],
+  // Chest + arms: shoulders for two presses in a row, the core for the crunches, then the press pattern.
+  4: [RAISE_UPPER, ARM_CIRCLES, SCAP_PUSH_UP, EXTERNAL_ROTATION, DEAD_BUG, SLOW_PUSH_UP],
+  // Back + chest: the bar for pull-ups, the upper back for rows and rear delts.
+  5: [RAISE_UPPER, ARM_CIRCLES, DEAD_HANG, SCAP_PULL_UP, PRONE_Y, LIGHT_ROW],
 };
 
 export function warmupFor(dayIndex: number): WarmupMove[] {

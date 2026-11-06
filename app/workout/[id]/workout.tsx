@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Digits, Pill } from "@/components/ui";
-import { formatLoad, nextLegal, prevLegal, MAX_LOAD, MIN_LOAD, type WarmupMove } from "@/lib/engine";
+import { formatLoad, nextLegal, prevLegal, MAX_LOAD, MIN_LOAD, variantFor, type WarmupMove } from "@/lib/engine";
 import type { SessionBundle, SetRow } from "@/lib/session/types";
 import { acquireWakeLock, releaseWakeLock } from "@/lib/wakelock";
 
@@ -354,6 +354,8 @@ export function Workout({ bundle: initial, dayLabel, dayName, warmup }: Props) {
   // ================================================================ render
 
   const repUnit = lift?.exercise.rep_unit ?? null;
+  const howTo =
+    lift && !workSets.some((w) => w.result === "completed") ? (variantFor(lift.exercise_key, lift.variant_index ?? 0).cue ?? null) : null;
   const loaded = Boolean(lift && !lift.exercise.is_bodyweight && set && set.prescribed_weight > 0);
   const canAdjust = Boolean(lift && set && set.kind === "work" && loaded);
   const changed = Boolean(lift && set && set.kind === "work" && loaded && set.prescribed_weight !== lift.prescribed_weight);
@@ -453,6 +455,8 @@ export function Workout({ bundle: initial, dayLabel, dayName, warmup }: Props) {
           )}
 
           <h1 className="title text-[38px] mt-8">{lift.display_name}</h1>
+          {/* How to do it: shown until the first working set is logged. */}
+          {howTo && <p className="caption mt-2 max-w-[36ch]">{howTo}</p>}
           {lift.formVideoPath && (
             <a href={`/api/form-video/${lift.exercise_key}`} target="_blank" rel="noreferrer" className="link mt-2 self-start text-[15px]">
               Watch form video
